@@ -5,19 +5,19 @@
       <img id="logo-img" src="../assets/logo.png" alt="Logo">
     </div>
     <nav class="sidebar-nav">
-      <a href="#dashboard" class="nav-link active">
+      <a @click="cambiarVista('dashboard')" href="#" class="nav-link" :class="{ active: vistaActiva === 'dashboard' }">
         <span class="nav-icon">📊</span>
         <span class="nav-text">Dashboard</span>
       </a>
-      <a href="#servicios" class="nav-link">
+      <a @click="cambiarVista('servicios')" href="#" class="nav-link" :class="{ active: vistaActiva === 'servicios' }">
         <span class="nav-icon">🛠️</span>
-        <span class="nav-text">Servicios</span>
+        <span class="nav-text">Diagnóstico Técnico</span> <!-- Cambiado el texto -->
       </a>
-      <a href="#clientes" class="nav-link">
+      <a @click="cambiarVista('clientes')" href="#" class="nav-link" :class="{ active: vistaActiva === 'clientes' }">
         <span class="nav-icon">👥</span>
         <span class="nav-text">Clientes</span>
       </a>
-      <a href="#contacto" class="nav-link">
+      <a @click="cambiarVista('contacto')" href="#" class="nav-link" :class="{ active: vistaActiva === 'contacto' }">
         <span class="nav-icon">📧</span>
         <span class="nav-text">Contacto</span>
       </a>
@@ -27,9 +27,25 @@
 
 <script>
 export default {
-  name: 'SidebarComponent'
+  name: 'SidebarComponent',
+  data() {
+    return {
+      vistaActiva: 'dashboard'
+    }
+  },
+  methods: {
+    cambiarVista(vista) {
+      this.vistaActiva = vista
+      this.$emit('change-view', vista)
+    }
+  }
 }
 </script>
+
+
+
+
+
 
 <style scoped>
 /* Sidebar Principal */
@@ -87,6 +103,7 @@ export default {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .nav-link::before {
@@ -231,6 +248,4 @@ export default {
 .nav-link:nth-child(2) { animation-delay: 0.2s; }
 .nav-link:nth-child(3) { animation-delay: 0.3s; }
 .nav-link:nth-child(4) { animation-delay: 0.4s; }
-
-
 </style>
