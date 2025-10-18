@@ -16,7 +16,9 @@
           <label for="password" class="form-label text-muted">Contraseña</label>
           <input type="password" class="form-control" id="password" placeholder="Ingresa tu contraseña" />
         </div>
-        <button type="submit" class="btn btn-accent w-100">Entrar</button>
+        
+        <router-link to="/dash" class="btn btn-accent w-100">Ingresar</router-link>
+
       </form>
       <div class="text-center mt-3 small text-muted">
         <a href="#">Términos de Servicio</a> | <a href="#">Política de Privacidad</a>
@@ -30,7 +32,7 @@
 
 /* 🎨 Paleta personalizada */
 .login-bg {
-  background: linear-gradient(#ff7e5f, #feb47b); /* Degradado rojo-naranja */
+  background: #df8615;
 }
 
 .login-card {
