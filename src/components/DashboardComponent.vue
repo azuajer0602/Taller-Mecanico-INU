@@ -367,36 +367,7 @@ export default {
 </script>
 
 <style scoped>
-/* Estilos del Sidebar (manteniendo tus estilos) */
-.sidebar {
-  height: 100%;
-  width: 250px;
-  position: fixed;
-  z-index: 1;
-  top: 0;
-  left: 0;
-  background-color: #df8615;
-  overflow-x: hidden;
-  padding-top: 20px;
-  transition: width 0.3s;
-}
 
-.sidebar a {
-  padding: 15px 20px 15px 25px;
-  text-decoration: none;
-  font-size: 16px;
-  color: #FFFFFF;
-  display: block;
-  transition: 0.3s;
-  border-radius: 8px;
-  margin: 5px 15px;
-}
-
-.sidebar a:hover, .sidebar a.active {
-  color: #f1f1f1;
-  background-color: #4a4b4d;
-  border-radius: 50px;
-}
 
 #logo-img {
   width: 150px;

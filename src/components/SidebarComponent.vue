@@ -40,7 +40,7 @@ export default {
   z-index: 1000;
   top: 0;
   left: 0;
-  background: linear-gradient(180deg, #df8615 0%, #c57610 100%);
+  background: #df8615;
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0;
@@ -62,6 +62,7 @@ export default {
   object-fit: contain;
   border-radius: 10px;
   transition: transform 0.3s ease;
+  background-color:#FFFFFF ;
 }
 
 #logo-img:hover {
@@ -231,23 +232,5 @@ export default {
 .nav-link:nth-child(3) { animation-delay: 0.3s; }
 .nav-link:nth-child(4) { animation-delay: 0.4s; }
 
-/* Modo Oscuro del Sidebar */
-@media (prefers-color-scheme: dark) {
-  .sidebar {
-    background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
-    border-right: 1px solid #333;
-  }
-  
-  .nav-link {
-    color: #e0e0e0;
-  }
-  
-  .nav-link:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  .nav-link.active {
-    background: rgba(255, 255, 255, 0.15);
-  }
-}
+
 </style>
