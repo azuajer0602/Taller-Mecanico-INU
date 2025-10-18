@@ -1,5 +1,5 @@
 <script setup>
-import login  from './components/registro_empleados.vue'
+import login  from './components/login.vue'
 </script>
 
 <template>
