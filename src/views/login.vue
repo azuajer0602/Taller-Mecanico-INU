@@ -1,7 +1,4 @@
 <template>
-    <div>
-
-  </div>
   <div class="container-fluid login-bg d-flex justify-content-center align-items-center vh-100">
     <div class="card login-card p-4 shadow">
 
@@ -9,11 +6,11 @@
       <h3 class="text-center mb-4 text-muted">Iniciar Sesión</h3>
       <form>
         <div class="mb-3">
-          <label for="username" class="form-label text-muted">Usuario</label>
+          <label for="username" class="form-label text-muted" required >Usuario</label>
           <input type="text" class="form-control" id="username" placeholder="Ingresa tu usuario" />
         </div>
         <div class="mb-3">
-          <label for="password" class="form-label text-muted">Contraseña</label>
+          <label for="password" class="form-label text-muted" required>Contraseña</label>
           <input type="password" class="form-control" id="password" placeholder="Ingresa tu contraseña" />
         </div>
         
@@ -29,8 +26,6 @@
 
 <style scoped>
 
-
-/* 🎨 Paleta personalizada */
 .login-bg {
   background: #df8615;
 }

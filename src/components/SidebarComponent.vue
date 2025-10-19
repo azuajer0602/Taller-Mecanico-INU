@@ -17,7 +17,7 @@
         <span class="nav-icon">🛠️</span>
         <span class="nav-text">Servicios</span>
       </a>
-      <a href="#servicios" class="nav-link">
+      <a class="nav-link">
         <span class="nav-icon">👥</span>
         <span><router-link to="/clientes" class="nav-text">Clientes</router-link></span>
       </a>

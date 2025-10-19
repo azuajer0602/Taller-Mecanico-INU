@@ -70,29 +70,6 @@ const cliente = reactive({
   </div>
 </template>
 
-<script>
-
-export default {
-  name: 'RegistroClientes',
-  methods: {
-    submitForm() {
-      console.log('Cliente a registrar:', this.cliente);
-      alert(`Cliente ${this.cliente.nombre} ${this.cliente.apellido} registrado (simulado).`);
-    }
-  },
-  mounted() {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
-    document.head.appendChild(link)
-    
-    const bootstrapCSS = document.createElement('link')
-    bootstrapCSS.rel = 'stylesheet'
-    bootstrapCSS.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
-    document.head.appendChild(bootstrapCSS)
-  }
-}
-</script>
 
 <style scoped>
 .main-content {
