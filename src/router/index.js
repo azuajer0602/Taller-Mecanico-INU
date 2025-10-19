@@ -1,17 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import DefaultLayout from '@/layouts/DefaultLayout.vue';
-import EmpleadosView from '@/views/EmpleadosView.vue';
+
+import DefaultLayout from '../layouts/DefaultLayout.vue'; 
+import EmpleadosView from '../views/EmpleadosView.vue'; 
 
 const routes = [
   {
     path: '/',
     name: 'Layout',
-    component: DefaultLayout, // Usa el layout como componente principal
+    component: DefaultLayout,
     children: [
       {
-        path: 'empleados', // La ruta será /empleados
+        path: 'empleados',
         name: 'Empleados',
-        component: EmpleadosView, // carga la vista de empleados dentro del layout
+        component: EmpleadosView,
         meta: { title: 'Gestión de Empleados' }
       },
     ]
