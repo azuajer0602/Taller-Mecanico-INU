@@ -1,0 +1,1 @@
+- [x] Increase max-width of .gastos-container back to 1100px and expand the "Registrar Nuevo Gasto" section by increasing padding
