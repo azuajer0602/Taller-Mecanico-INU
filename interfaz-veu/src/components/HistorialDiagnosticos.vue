@@ -2,7 +2,6 @@
   <div class="historial-container">
     <div class="page-header">
       <h2><i class="fas fa-history me-2"></i>Historial de Diagnósticos</h2>
-     
     </div>
 
     <!-- Filtros -->
@@ -108,26 +107,41 @@
       <div class="table-header">
         <h5>Historial de Diagnósticos</h5>
         <div class="table-actions">
-          <button class="btn btn-outline" @click="exportarExcel">
+          <button class="btn btn-outline" @click="exportarExcel" :disabled="historialFiltrado.length === 0">
             <i class="fas fa-file-excel me-1"></i>Exportar Excel
+          </button>
+          <button class="btn btn-outline" @click="toggleVista" v-if="historialFiltrado.length > 0">
+            <i class="fas" :class="vistaTabla ? 'fa-list' : 'fa-table'"></i>
+            {{ vistaTabla ? 'Vista Tarjetas' : 'Vista Tabla' }}
           </button>
         </div>
       </div>
       
-      <div class="table-responsive">
+      <!-- Vista Tabla -->
+      <div v-if="vistaTabla" class="table-responsive">
         <table class="custom-table">
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>Vehículo</th>
+              <th @click="ordenarPor('fecha')" class="sortable">
+                Fecha
+                <i class="fas" :class="getSortIcon('fecha')"></i>
+              </th>
+              <th @click="ordenarPor('vehiculo.placa')" class="sortable">
+                Vehículo
+                <i class="fas" :class="getSortIcon('vehiculo.placa')"></i>
+              </th>
               <th>Cliente</th>
               <th>Técnico</th>
               <th>Falla Principal</th>
-              <th>Estado</th>
+              <th @click="ordenarPor('estado')" class="sortable">
+                Estado
+                <i class="fas" :class="getSortIcon('estado')"></i>
+              </th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="diagnostico in historialFiltrado" :key="diagnostico.id">
+            <tr v-for="diagnostico in historialFiltradoOrdenado" :key="diagnostico.id">
               <td class="fecha-cell">
                 <div class="fecha">{{ formatFecha(diagnostico.fecha) }}</div>
                 <div class="hora">{{ formatHora(diagnostico.fecha) }}</div>
@@ -152,9 +166,67 @@
                   {{ getEstadoText(diagnostico.estado) }}
                 </span>
               </td>
+              <td class="acciones-cell">
+                <div class="acciones-group">
+                  <button class="btn-accion btn-ver" @click="verDetalles(diagnostico)" title="Ver detalles">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn-accion btn-pdf" @click="generarPDF(diagnostico)" title="Generar PDF">
+                    <i class="fas fa-file-pdf"></i>
+                  </button>
+                  <button class="btn-accion btn-editar" @click="editarDiagnostico(diagnostico)" title="Editar">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Vista Tarjetas -->
+      <div v-else class="cards-container">
+        <div class="diagnostico-cards">
+          <div v-for="diagnostico in historialFiltradoOrdenado" :key="diagnostico.id" class="diagnostico-card">
+            <div class="card-header">
+              <div class="card-placa">{{ diagnostico.vehiculo.placa }}</div>
+              <span :class="['card-estado', getEstadoClass(diagnostico.estado)]">
+                {{ getEstadoText(diagnostico.estado) }}
+              </span>
+            </div>
+            <div class="card-body">
+              <div class="card-info">
+                <div class="info-item">
+                  <i class="fas fa-car"></i>
+                  <span>{{ diagnostico.vehiculo.marca }} {{ diagnostico.vehiculo.modelo }}</span>
+                </div>
+                <div class="info-item">
+                  <i class="fas fa-user"></i>
+                  <span>{{ diagnostico.cliente.nombre }}</span>
+                </div>
+                <div class="info-item">
+                  <i class="fas fa-tools"></i>
+                  <span>{{ diagnostico.tecnico.nombre }}</span>
+                </div>
+                <div class="info-item">
+                  <i class="fas fa-calendar"></i>
+                  <span>{{ formatFecha(diagnostico.fecha) }} {{ formatHora(diagnostico.fecha) }}</span>
+                </div>
+              </div>
+              <div class="card-falla">
+                <strong>Falla:</strong> {{ diagnostico.fallaPrincipal }}
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-outline" @click="verDetalles(diagnostico)">
+                <i class="fas fa-eye"></i> Detalles
+              </button>
+              <button class="btn btn-sm btn-outline" @click="generarPDF(diagnostico)">
+                <i class="fas fa-file-pdf"></i> PDF
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Paginación -->
@@ -205,6 +277,9 @@ export default {
       filtroFechaHasta: '',
       paginaActual: 1,
       itemsPorPagina: 10,
+      vistaTabla: true,
+      ordenCampo: 'fecha',
+      ordenDireccion: 'desc',
       diagnosticos: []
     }
   },
@@ -219,7 +294,6 @@ export default {
     historialFiltrado() {
       let filtrado = this.diagnosticos
       
-      // Aplicar filtros
       if (this.filtroPlaca) {
         filtrado = filtrado.filter(d => 
           d.vehiculo.placa.toLowerCase().includes(this.filtroPlaca.toLowerCase())
@@ -242,11 +316,24 @@ export default {
         filtrado = filtrado.filter(d => new Date(d.fecha) <= new Date(this.filtroFechaHasta))
       }
       
-      // Paginación
-      const inicio = (this.paginaActual - 1) * this.itemsPorPagina
-      const fin = inicio + this.itemsPorPagina
+      return filtrado
+    },
+    historialFiltradoOrdenado() {
+      const filtrado = [...this.historialFiltrado];
       
-      return filtrado.slice(inicio, fin)
+      return filtrado.sort((a, b) => {
+        let aVal = this.getNestedValue(a, this.ordenCampo);
+        let bVal = this.getNestedValue(b, this.ordenCampo);
+        
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+        }
+        
+        if (aVal < bVal) return this.ordenDireccion === 'asc' ? -1 : 1;
+        if (aVal > bVal) return this.ordenDireccion === 'asc' ? 1 : -1;
+        return 0;
+      });
     },
     totalDiagnosticos() {
       return this.diagnosticos.length
@@ -261,7 +348,7 @@ export default {
       return this.diagnosticos.filter(d => d.estado === 'completado').length
     },
     totalItems() {
-      return this.diagnosticos.length
+      return this.historialFiltrado.length
     },
     totalPaginas() {
       return Math.ceil(this.totalItems / this.itemsPorPagina)
@@ -300,6 +387,24 @@ export default {
       if (pagina >= 1 && pagina <= this.totalPaginas) {
         this.paginaActual = pagina
       }
+    },
+    ordenarPor(campo) {
+      if (this.ordenCampo === campo) {
+        this.ordenDireccion = this.ordenDireccion === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.ordenCampo = campo;
+        this.ordenDireccion = 'asc';
+      }
+    },
+    getSortIcon(campo) {
+      if (this.ordenCampo !== campo) return 'fa-sort';
+      return this.ordenDireccion === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+    },
+    getNestedValue(obj, path) {
+      return path.split('.').reduce((current, key) => current?.[key], obj);
+    },
+    toggleVista() {
+      this.vistaTabla = !this.vistaTabla;
     },
     verDetalles(diagnostico) {
       console.log('Ver detalles:', diagnostico)
@@ -345,7 +450,6 @@ export default {
     }
   },
   mounted() {
-    // Datos de ejemplo
     this.diagnosticos = [
       {
         id: 1,
@@ -394,13 +498,6 @@ export default {
   font-weight: 700;
   margin-bottom: 0.5rem;
 }
-
-.page-description {
-  color: var(--color-dark);
-  opacity: 0.7;
-  font-size: 1.1rem;
-}
-
 
 .filters-card {
   background: var(--color-white);
@@ -495,7 +592,7 @@ export default {
   background: #d96a20;
 }
 
-/* Estadísticas - Solo iconos con color */
+/* Estadísticas */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -566,7 +663,7 @@ export default {
   color: var(--color-dark);
 }
 
-/* Tabla - Encabezados con el mismo estilo que filtros */
+/* Tabla */
 .table-card {
   background: var(--color-white);
   border-radius: 12px;
@@ -591,6 +688,11 @@ export default {
   color: var(--color-yellow);
 }
 
+.table-actions {
+  display: flex;
+  gap: 1rem;
+}
+
 .btn-outline {
   background: transparent;
   border: 2px solid var(--color-yellow);
@@ -604,6 +706,11 @@ export default {
 .btn-outline:hover {
   background: var(--color-yellow);
   color: var(--color-dark);
+}
+
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .table-responsive {
@@ -625,6 +732,16 @@ export default {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease;
+}
+
+.sortable:hover {
+  background-color: #e9ecef;
 }
 
 .custom-table td {
@@ -772,6 +889,97 @@ export default {
   color: white;
 }
 
+/* Vista Tarjetas */
+.cards-container {
+  padding: 1.5rem;
+}
+
+.diagnostico-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.diagnostico-card {
+  background: var(--color-white);
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.diagnostico-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  padding: 1rem;
+  background: var(--color-yellow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(245, 225, 164, 0.5);
+}
+
+.card-placa {
+  font-weight: 700;
+  color: var(--color-dark);
+  font-size: 1.1rem;
+}
+
+.card-estado {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.info-item i {
+  width: 16px;
+  color: var(--color-orange);
+}
+
+.card-falla {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.card-actions {
+  padding: 1rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
 /* Paginación */
 .pagination-container {
   padding: 1.25rem 1.5rem;
@@ -863,6 +1071,11 @@ export default {
     align-items: flex-start;
   }
   
+  .table-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
   .pagination-container {
     flex-direction: column;
     gap: 1rem;
@@ -879,6 +1092,10 @@ export default {
   .custom-table th,
   .custom-table td {
     padding: 0.75rem 0.5rem;
+  }
+  
+  .diagnostico-cards {
+    grid-template-columns: 1fr;
   }
 }
 </style>

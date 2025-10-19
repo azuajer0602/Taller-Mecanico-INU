@@ -1,53 +1,42 @@
 <template>
-  <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo-container">
       <img id="logo-img" src="../assets/logo.png" alt="Logo Taller Mecánico">
     </div>
     <nav class="sidebar-nav">
-      <a 
-        href="#registro" 
-        class="nav-link" 
-        :class="{ active: currentView === 'registro' }"
-        @click.prevent="$emit('cambiar-vista', 'registro')"
+      <router-link 
+        to="/registro" 
+        class="nav-link"
+        :class="{ active: $route.path === '/registro' }"
       >
         <span class="nav-icon">🚗</span>
         <span class="nav-text">Registro de Vehículos</span>
-      </a>
-      <a 
-        href="#diagnostico" 
-        class="nav-link" 
-        :class="{ active: currentView === 'diagnostico' }"
-        @click.prevent="$emit('cambiar-vista', 'diagnostico')"
+      </router-link>
+      
+      <router-link 
+        to="/diagnostico" 
+        class="nav-link"
+        :class="{ active: $route.path === '/diagnostico' }"
       >
         <span class="nav-icon">🔧</span>
         <span class="nav-text">Diagnóstico Técnico</span>
-      </a>
-      <a 
-        href="#historial" 
-        class="nav-link" 
-        :class="{ active: currentView === 'historial' }"
-        @click.prevent="$emit('cambiar-vista', 'historial')"
+      </router-link>
+      
+      <router-link 
+        to="/historial" 
+        class="nav-link"
+        :class="{ active: $route.path === '/historial' }"
       >
         <span class="nav-icon">📊</span>
         <span class="nav-text">Historial</span>
-      </a>
+      </router-link>
     </nav>
-    
-    
   </div>
 </template>
 
 <script>
 export default {
-  name: 'SidebarComponent',
-  props: {
-    currentView: {
-      type: String,
-      required: true
-    }
-  },
-  emits: ['cambiar-vista']
+  name: 'SidebarComponent'
 }
 </script>
 

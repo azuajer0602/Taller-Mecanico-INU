@@ -2,7 +2,6 @@
   <div class="diagnostico-container">
     <div class="page-header">
       <h2><i class="fas fa-stethoscope me-2"></i>Diagnóstico Técnico</h2>
-
     </div>
 
     <div class="diagnostico-content">
@@ -93,16 +92,33 @@
           </div>
         </div>
         
+        <!-- Resumen del Diagnóstico -->
+        <div class="resumen-diagnostico" v-if="mostrarResumen">
+          <h5>Resumen del Diagnóstico</h5>
+          <div class="resumen-grid">
+            <div v-for="sistema in sistemas" :key="sistema.id" class="resumen-item">
+              <span class="resumen-sistema">{{ sistema.nombre }}</span>
+              <span class="resumen-estado" :class="getStatusClass(diagnosticoActual[sistema.id].estado)">
+                {{ getStatusText(diagnosticoActual[sistema.id].estado) }}
+              </span>
+            </div>
+          </div>
+        </div>
+        
         <!-- Acciones -->
         <div class="diagnostico-actions">
           <button class="btn btn-secondary" @click="limpiarDiagnostico">
             <i class="fas fa-eraser me-1"></i>Limpiar
           </button>
-          <button class="btn btn-orange" @click="guardarDiagnostico">
+          <button class="btn btn-orange" @click="guardarDiagnostico" :disabled="!diagnosticoCompleto">
             <i class="fas fa-save me-1"></i>Guardar Diagnóstico
           </button>
-          <button class="btn btn-red" @click="generarReporte">
+          <button class="btn btn-red" @click="generarReporte" :disabled="!diagnosticoCompleto">
             <i class="fas fa-file-pdf me-1"></i>Generar Reporte PDF
+          </button>
+          <button class="btn btn-outline" @click="mostrarResumen = !mostrarResumen">
+            <i class="fas" :class="mostrarResumen ? 'fa-eye-slash' : 'fa-eye'"></i>
+            {{ mostrarResumen ? 'Ocultar Resumen' : 'Ver Resumen' }}
           </button>
         </div>
       </div>
@@ -126,6 +142,7 @@ export default {
     return {
       vehiculoSeleccionado: '',
       sistemaAbierto: 'motor',
+      mostrarResumen: false,
       sistemas: [
         {
           id: 'motor',
@@ -182,13 +199,19 @@ export default {
       vehiculosEnTaller: []
     }
   },
+  computed: {
+    diagnosticoCompleto() {
+      return Object.values(this.diagnosticoActual).every(sistema => 
+        sistema.estado !== 'optimo' || sistema.fallas.length > 0 || sistema.observaciones.trim() !== ''
+      );
+    }
+  },
   methods: {
     toggleSistema(sistemaId) {
       this.sistemaAbierto = this.sistemaAbierto === sistemaId ? null : sistemaId;
     },
     cargarDiagnostico() {
       console.log('Cargando diagnóstico para vehículo:', this.vehiculoSeleccionado);
-      // Aquí cargarías el diagnóstico existente o inicializarías uno nuevo
     },
     guardarDiagnostico() {
       console.log('Guardando diagnóstico:', this.diagnosticoActual);
@@ -201,6 +224,7 @@ export default {
         suspension: { estado: 'optimo', fallas: [], observaciones: '' },
         electrico: { estado: 'optimo', fallas: [], observaciones: '' }
       };
+      this.mostrarResumen = false;
     },
     generarReporte() {
       alert('📄 Generando reporte PDF...');
@@ -225,7 +249,6 @@ export default {
     }
   },
   mounted() {
-    // Datos de ejemplo
     this.vehiculosEnTaller = [
       {
         id: 1,
@@ -253,7 +276,6 @@ export default {
   padding: 0 1rem;
 }
 
-/* Header con buen espaciado */
 .page-header {
   margin-bottom: 2.5rem;
   padding-top: 1rem;
@@ -493,6 +515,46 @@ export default {
   flex: 1;
 }
 
+.resumen-diagnostico {
+  padding: 1.5rem;
+  background: var(--color-yellow);
+  border-top: 1px solid rgba(245, 225, 164, 0.5);
+}
+
+.resumen-diagnostico h5 {
+  color: var(--color-dark);
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.resumen-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--color-white);
+  border-radius: 6px;
+  border: 1px solid rgba(245, 225, 164, 0.5);
+}
+
+.resumen-sistema {
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.resumen-estado {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .diagnostico-actions {
   padding: 1.5rem;
   background: #f8f9fa;
@@ -500,6 +562,7 @@ export default {
   gap: 1rem;
   justify-content: flex-end;
   border-top: 1px solid #e9ecef;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -543,6 +606,22 @@ export default {
 .btn-red:hover {
   background: #a01223;
   transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--color-orange);
+  color: var(--color-orange);
+}
+
+.btn-outline:hover {
+  background: var(--color-orange);
+  color: white;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .no-vehicle-message {
@@ -611,6 +690,10 @@ export default {
   
   .sistema-form {
     padding: 1.25rem;
+  }
+  
+  .resumen-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

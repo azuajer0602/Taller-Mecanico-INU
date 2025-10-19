@@ -2,11 +2,20 @@
   <div class="registro-container">
     <div class="page-header">
       <h2><i class="fas fa-car me-2"></i>Registro de Vehículo</h2>
-      
+      <div class="header-actions">
+        <button 
+          class="btn btn-orange" 
+          @click="mostrarFormulario = !mostrarFormulario"
+        >
+          <i class="fas" :class="mostrarFormulario ? 'fa-eye-slash' : 'fa-eye'"></i>
+          {{ mostrarFormulario ? 'Ocultar Formulario' : 'Mostrar Formulario' }}
+        </button>
+      </div>
     </div>
 
     <div class="form-container">
-      <div class="form-card">
+      <!-- Formulario con v-if para mostrar/ocultar -->
+      <div v-if="mostrarFormulario" class="form-card">
         <div class="card-header bg-dark text-yellow">
           <h5 class="card-title mb-0">
             <i class="fas fa-clipboard-list me-2"></i>Datos del Vehículo
@@ -35,7 +44,7 @@
                 <input type="text" class="form-control" v-model="nuevoVehiculo.placa" required 
                        :class="{'input-error': placaExiste}">
                 <div v-if="placaExiste" class="error-message">
-                    Esta placa ya está registrada en el sistema
+                  Esta placa ya está registrada en el sistema
                 </div>
               </div>
             </div>
@@ -80,7 +89,7 @@
               <button type="button" class="btn btn-secondary" @click="limpiarFormulario">
                 <i class="fas fa-sync me-1"></i>Limpiar
               </button>
-              <button type="submit" class="btn btn-orange" :disabled="placaExiste">
+              <button type="submit" class="btn btn-orange" :disabled="placaExiste || !formValido">
                 <i class="fas fa-save me-1"></i>Registrar Vehículo
               </button>
             </div>
@@ -88,22 +97,133 @@
         </div>
       </div>
       
-      <!-- Resumen de Vehículos Recientes -->
-      <div class="recent-vehicles">
-        <h5 class="section-title">Vehículos Registrados Hoy</h5>
-        <div class="vehicles-grid">
-          <div v-for="vehiculo in vehiculosRecientes" :key="vehiculo.id" class="vehicle-card">
+      <!-- Filtros para la lista de vehículos -->
+      <div class="filters-container" v-if="vehiculos.length > 0">
+        <div class="filter-group">
+          <label>Filtrar por marca:</label>
+          <select v-model="filtroMarca" class="form-control filter-select">
+            <option value="">Todas las marcas</option>
+            <option v-for="marca in marcasUnicas" :key="marca" :value="marca">{{ marca }}</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filtrar por estado:</label>
+          <select v-model="filtroEstado" class="form-control filter-select">
+            <option value="">Todos los estados</option>
+            <option v-for="estado in estados" :key="estado" :value="estado">{{ estado }}</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary" @click="limpiarFiltros">
+          <i class="fas fa-times me-1"></i>Limpiar Filtros
+        </button>
+      </div>
+      
+      <!-- Resumen de Vehículos con más funcionalidades -->
+      <div class="recent-vehicles" v-if="vehiculosFiltrados.length > 0">
+        <h5 class="section-title">
+          Vehículos Registrados 
+          <span class="badge bg-orange">{{ vehiculosFiltrados.length }}</span>
+        </h5>
+        
+        <!-- Selector de vista -->
+        <div class="view-options">
+          <button 
+            class="btn btn-sm" 
+            :class="vistaGrid ? 'btn-orange' : 'btn-secondary'"
+            @click="vistaGrid = true"
+          >
+            <i class="fas fa-th"></i> Grid
+          </button>
+          <button 
+            class="btn btn-sm" 
+            :class="!vistaGrid ? 'btn-orange' : 'btn-secondary'"
+            @click="vistaGrid = false"
+          >
+            <i class="fas fa-list"></i> Lista
+          </button>
+        </div>
+        
+        <!-- Vista Grid -->
+        <div v-if="vistaGrid" class="vehicles-grid">
+          <div 
+            v-for="vehiculo in vehiculosFiltrados" 
+            :key="vehiculo.id" 
+            class="vehicle-card"
+            :class="{'vehicle-card-highlight': esVehiculoReciente(vehiculo)}"
+          >
             <div class="vehicle-header">
               <span class="vehicle-placa">{{ vehiculo.placa }}</span>
-              <span class="vehicle-status" :class="vehiculo.estado">{{ vehiculo.estado }}</span>
+              <span class="vehicle-status" :class="vehiculo.estado">
+                {{ formatoEstado(vehiculo.estado) }}
+              </span>
             </div>
             <div class="vehicle-info">
               <div class="vehicle-marca">{{ vehiculo.marca }} {{ vehiculo.modelo }}</div>
               <div class="vehicle-cliente">{{ obtenerCliente(vehiculo.clienteId)?.nombre }}</div>
               <div class="vehicle-hora">{{ formatHora(vehiculo.fechaIngreso) }}</div>
+              <div class="vehicle-km" v-if="vehiculo.kilometraje">
+                {{ vehiculo.kilometraje.toLocaleString() }} km
+              </div>
+            </div>
+            <div class="vehicle-actions">
+              <button 
+                class="btn btn-sm btn-outline-orange"
+                @click="seleccionarVehiculo(vehiculo)"
+                :title="`Ver detalles de ${vehiculo.placa}`"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+              <button 
+                class="btn btn-sm btn-outline-red"
+                @click="eliminarVehiculo(vehiculo.id)"
+                :title="`Eliminar ${vehiculo.placa}`"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
           </div>
         </div>
+        
+        <!-- Vista Lista -->
+        <div v-else class="vehicles-list">
+          <div 
+            v-for="vehiculo in vehiculosFiltrados" 
+            :key="vehiculo.id" 
+            class="vehicle-list-item"
+          >
+            <div class="list-item-main">
+              <div class="list-item-placa">{{ vehiculo.placa }}</div>
+              <div class="list-item-info">
+                <strong>{{ vehiculo.marca }} {{ vehiculo.modelo }}</strong>
+                <span>{{ obtenerCliente(vehiculo.clienteId)?.nombre }}</span>
+                <small>{{ formatHora(vehiculo.fechaIngreso) }}</small>
+              </div>
+            </div>
+            <div class="list-item-actions">
+              <span class="vehicle-status" :class="vehiculo.estado">
+                {{ formatoEstado(vehiculo.estado) }}
+              </span>
+              <button 
+                class="btn btn-sm btn-outline-orange"
+                @click="seleccionarVehiculo(vehiculo)"
+              >
+                <i class="fas fa-eye"></i> Ver
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Mensaje cuando no hay vehículos -->
+      <div v-else class="empty-state">
+        <i class="fas fa-car fa-3x mb-3 text-orange"></i>
+        <h4>No hay vehículos registrados</h4>
+        <p v-if="!mostrarFormulario">
+          <button class="btn btn-orange" @click="mostrarFormulario = true">
+            <i class="fas fa-plus me-1"></i>Registrar Primer Vehículo
+          </button>
+        </p>
+        <p v-else>Comienza registrando tu primer vehículo</p>
       </div>
     </div>
   </div>
@@ -124,23 +244,46 @@ export default {
         kilometraje: 0,
         observaciones: ''
       },
+      mostrarFormulario: true,
+      vistaGrid: true,
+      filtroMarca: '',
+      filtroEstado: '',
       marcas: ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Nissan', 'Hyundai', 'Kia', 'Volkswagen'],
       clientes: [
         { id: 1, nombre: 'Juan Pérez', telefono: '555-0101' },
-        { id: 2, nombre: 'María García', telefono: '555-0102' }
+        { id: 2, nombre: 'María García', telefono: '555-0102' },
+        { id: 3, nombre: 'Carlos López', telefono: '555-0103' }
       ],
-      vehiculos: []
+      vehiculos: [],
+      estados: ['en_taller', 'en_reparacion', 'completado', 'entregado']
     }
   },
   computed: {
     placaExiste() {
-      return this.vehiculos.some(v => v.placa === this.nuevoVehiculo.placa);
+      return this.vehiculos.some(v => v.placa === this.nuevoVehiculo.placa && v.placa !== '');
     },
-    vehiculosRecientes() {
-      const hoy = new Date().toDateString();
-      return this.vehiculos.filter(v => 
-        new Date(v.fechaIngreso).toDateString() === hoy
-      ).slice(-5);
+    formValido() {
+      return this.nuevoVehiculo.marca && 
+             this.nuevoVehiculo.modelo && 
+             this.nuevoVehiculo.placa && 
+             this.nuevoVehiculo.clienteId &&
+             this.nuevoVehiculo.fechaIngreso;
+    },
+    marcasUnicas() {
+      return [...new Set(this.vehiculos.map(v => v.marca))];
+    },
+    vehiculosFiltrados() {
+      let filtrados = this.vehiculos;
+      
+      if (this.filtroMarca) {
+        filtrados = filtrados.filter(v => v.marca === this.filtroMarca);
+      }
+      
+      if (this.filtroEstado) {
+        filtrados = filtrados.filter(v => v.estado === this.filtroEstado);
+      }
+      
+      return filtrados;
     }
   },
   methods: {
@@ -159,6 +302,10 @@ export default {
         kilometraje: 0,
         observaciones: ''
       };
+    },
+    limpiarFiltros() {
+      this.filtroMarca = '';
+      this.filtroEstado = '';
     },
     registrarVehiculo() {
       if (this.placaExiste) {
@@ -184,10 +331,30 @@ export default {
         hour: '2-digit', 
         minute: '2-digit' 
       });
+    },
+    formatoEstado(estado) {
+      const estados = {
+        'en_taller': 'En Taller',
+        'en_reparacion': 'En Reparación',
+        'completado': 'Completado',
+        'entregado': 'Entregado'
+      };
+      return estados[estado] || estado;
+    },
+    esVehiculoReciente(vehiculo) {
+      const unaHora = 60 * 60 * 1000;
+      return (Date.now() - new Date(vehiculo.fechaIngreso).getTime()) < unaHora;
+    },
+    seleccionarVehiculo(vehiculo) {
+      alert(`Seleccionado: ${vehiculo.marca} ${vehiculo.modelo} - ${vehiculo.placa}`);
+    },
+    eliminarVehiculo(id) {
+      if (confirm('¿Estás seguro de que quieres eliminar este vehículo?')) {
+        this.vehiculos = this.vehiculos.filter(v => v.id !== id);
+      }
     }
   },
   mounted() {
-    // Cargar datos de ejemplo
     this.vehiculos = [
       {
         id: 1,
@@ -196,7 +363,20 @@ export default {
         modelo: 'Corolla',
         clienteId: 1,
         fechaIngreso: new Date().toISOString(),
-        estado: 'en_taller'
+        estado: 'en_taller',
+        kilometraje: 45000,
+        observaciones: 'Vehículo en buen estado general'
+      },
+      {
+        id: 2,
+        placa: 'XYZ789',
+        marca: 'Honda',
+        modelo: 'Civic',
+        clienteId: 2,
+        fechaIngreso: new Date().toISOString(),
+        estado: 'en_reparacion',
+        kilometraje: 32000,
+        observaciones: 'Requiere cambio de aceite'
       }
     ];
   }
@@ -210,18 +390,23 @@ export default {
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .page-header h2 {
   color: var(--color-dark);
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 
-.page-description {
-  color: var(--color-orange);
-  font-size: 1.1rem;
+.header-actions {
+  display: flex;
+  gap: 1rem;
 }
 
 .form-container {
@@ -328,6 +513,11 @@ export default {
   gap: 0.5rem;
 }
 
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
 .btn-secondary {
   background: var(--color-olive);
   color: var(--color-dark);
@@ -337,11 +527,62 @@ export default {
   background: #c4c084;
 }
 
+.btn-outline-orange {
+  background: transparent;
+  border: 2px solid var(--color-orange);
+  color: var(--color-orange);
+}
+
+.btn-outline-orange:hover {
+  background: var(--color-orange);
+  color: white;
+}
+
+.btn-outline-red {
+  background: transparent;
+  border: 2px solid var(--color-red);
+  color: var(--color-red);
+}
+
+.btn-outline-red:hover {
+  background: var(--color-red);
+  color: white;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+/* Filtros */
+.filters-container {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+  padding: 1.5rem;
+  background: var(--color-white);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(48, 35, 37, 0.1);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: var(--color-dark);
+  font-size: 0.9rem;
+}
+
+.filter-select {
+  min-width: 150px;
+}
+
+/* Lista de vehículos */
 .recent-vehicles {
   background: var(--color-white);
   padding: 1.5rem;
@@ -353,11 +594,33 @@ export default {
   color: var(--color-dark);
   margin-bottom: 1rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bg-orange {
+  background: var(--color-orange);
+  color: white;
+}
+
+.view-options {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Vista Grid */
 .vehicles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
 }
 
@@ -366,6 +629,17 @@ export default {
   padding: 1rem;
   border-radius: 8px;
   border-left: 4px solid var(--color-orange);
+  transition: all 0.3s ease;
+}
+
+.vehicle-card-highlight {
+  border-left-color: var(--color-red);
+  background: linear-gradient(135deg, var(--color-yellow) 0%, #f8d7a4 100%);
+}
+
+.vehicle-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(48, 35, 37, 0.2);
 }
 
 .vehicle-header {
@@ -393,9 +667,25 @@ export default {
   color: white;
 }
 
+.vehicle-status.en_reparacion {
+  background: var(--color-red);
+  color: white;
+}
+
+.vehicle-status.completado {
+  background: var(--color-olive);
+  color: var(--color-dark);
+}
+
+.vehicle-status.entregado {
+  background: var(--color-dark);
+  color: white;
+}
+
 .vehicle-info {
   font-size: 0.9rem;
   color: var(--color-dark);
+  margin-bottom: 0.5rem;
 }
 
 .vehicle-info div {
@@ -415,6 +705,80 @@ export default {
   font-weight: 600;
 }
 
+.vehicle-km {
+  color: var(--color-orange);
+  font-weight: 600;
+}
+
+.vehicle-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Vista Lista */
+.vehicles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vehicle-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--color-yellow);
+  border-radius: 8px;
+  border-left: 4px solid var(--color-orange);
+}
+
+.list-item-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.list-item-placa {
+  font-weight: 700;
+  color: var(--color-dark);
+  font-size: 1.1rem;
+  min-width: 80px;
+}
+
+.list-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.list-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Estado vacío */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: var(--color-white);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(48, 35, 37, 0.1);
+  color: var(--color-dark);
+}
+
+.empty-state h4 {
+  margin-bottom: 0.5rem;
+  color: var(--color-orange);
+}
+
+.empty-state p {
+  color: var(--color-dark);
+  opacity: 0.7;
+}
+
+/* Responsive */
 @media (min-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr 1fr;
@@ -422,12 +786,36 @@ export default {
 }
 
 @media (max-width: 767px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
   .form-actions {
     flex-direction: column;
   }
   
   .btn {
     justify-content: center;
+  }
+  
+  .filters-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .vehicle-list-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .list-item-actions {
+    justify-content: space-between;
+  }
+  
+  .empty-state {
+    padding: 2rem 1rem;
   }
 }
 </style>

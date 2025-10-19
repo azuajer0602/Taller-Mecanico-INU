@@ -1,23 +1,10 @@
 <template>
   <div class="app-container">
-    <SidebarComponent 
-      :currentView="currentView" 
-      @cambiar-vista="cambiarVista" 
-    />
+    <SidebarComponent />
     
     <div class="main-layout">
       <main class="content-area">
-        <VehiculoRegistro 
-          v-if="currentView === 'registro'" 
-        />
-        
-        <DiagnosticoTecnico 
-          v-if="currentView === 'diagnostico'" 
-        />
-        
-        <HistorialDiagnosticos 
-          v-if="currentView === 'historial'" 
-        />
+        <router-view></router-view>
       </main>
     </div>
   </div>
@@ -25,27 +12,11 @@
 
 <script>
 import SidebarComponent from './components/SidebarComponent.vue'
-import VehiculoRegistro from './components/VehiculoRegistro.vue'
-import DiagnosticoTecnico from './components/DiagnosticoTecnico.vue'
-import HistorialDiagnosticos from './components/HistorialDiagnosticos.vue'
 
 export default {
   name: 'App',
   components: {
-    SidebarComponent,
-    VehiculoRegistro,
-    DiagnosticoTecnico,
-    HistorialDiagnosticos
-  },
-  data() {
-    return {
-      currentView: 'registro'
-    }
-  },
-  methods: {
-    cambiarVista(vista) {
-      this.currentView = vista
-    }
+    SidebarComponent
   }
 }
 </script>
