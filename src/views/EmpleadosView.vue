@@ -1,102 +1,86 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import EmpleadosTabla from '../components/Empleados/EmpleadosTabla.vue'; // Ruta Corregida
-import EmpleadoFormulario from '../components/Empleados/EmpleadoFormulario.vue'; // Ruta Corregida
+import { ref, onMounted, computed } from 'vue';
+import EmpleadosTabla from '../components/Empleados/EmpleadosTabla.vue'; 
+import EmpleadoFormulario from '../components/Empleados/EmpleadoFormulario.vue'; 
 
 // Datos de la lógica
 const empleados = ref([]);
 const mostrarFormulario = ref(false);
 
-//datos simulados
+//  la Variable reactiva para el texto de búsqueda (v-model)
+const terminoBusqueda = ref('');
+
+// datos simulados
 const datosSimulados = [
-  {
-    id: 1,
-    nombre: 'Javier',
-    apellido: 'Pérez',
-    cargo: 'Mecánico',
-    sueldoBase: 850000,
-    fechaIngreso: '2022-08-15',
-    contacto: '987654321',
-    tipoContrato: 'Indefinido',
-    estado: 'Activo'
-  },
-
-  {
-    id: 2,
-    nombre: 'Ana',
-    apellido: 'Gómez',
-    cargo: 'Recepcionista',
-    sueldoBase: 450000,
-    fechaIngreso: '2023-01-20',
-    contacto: '912345678',
-    tipoContrato: 'Temporal',
-    estado: 'Vacaciones'
-  },
-
-  {
-    id: 3,
-    nombre: 'Ricardo',
-    apellido: 'Rojas',
-    cargo: 'Jefe de Taller',
-    sueldoBase: 1200000,
-    fechaIngreso: '2021-05-10',
-    contacto: '999887766',
-    tipoContrato: 'Indefinido',
-    estado: 'Activo'
-  },
-  {
-    id: 4,
-    nombre: 'Jose',
-    apellido: 'Gonzalez',
-    cargo: 'Ayudante de mecanico',
-    sueldoBase: 300000,
-    fechaIngreso: '2024-05-22',
-    contacto: '9998574446',
-    tipoContrato: 'Indefinido',
-    estado: 'Activo'
-  },
+  { id: 1, nombre: 'Javier', apellido: 'Pérez', cargo: 'Mecánico', sueldoBase: 850000, fechaIngreso: '2022-08-15', contacto: '987654321', tipoContrato: 'Indefinido', estado: 'Activo' },
+  { id: 2, nombre: 'Ana', apellido: 'Gómez', cargo: 'Recepcionista', sueldoBase: 450000, fechaIngreso: '2023-01-20', contacto: '912345678', tipoContrato: 'Temporal', estado: 'Vacaciones' },
+  { id: 3, nombre: 'Ricardo', apellido: 'Rojas', cargo: 'Jefe de Taller', sueldoBase: 1200000, fechaIngreso: '2021-05-10', contacto: '999887766', tipoContrato: 'Indefinido', estado: 'Activo' },
+  { id: 4, nombre: 'Jose', apellido: 'Gonzalez', cargo: 'Ayudante de mecanico', sueldoBase: 300000, fechaIngreso: '2024-05-22', contacto: '9998574446', tipoContrato: 'Indefinido', estado: 'Activo' },
 ];
 
 const cargarEmpleados = () => {
-  empleados.value = datosSimulados;
-  mostrarFormulario.value = false;
+  empleados.value = [...datosSimulados]; // se uso spread para asegurar la reactividad
+  mostrarFormulario.value = false;
 };
 
 const abrirEdicion = (empleadoId) => {
-  console.log('Abrir edición para el ID:', empleadoId);
-  // Aquí iría la lógica para cargar el formulario con los datos del empleado.
-
+  console.log('Abrir edición para el ID:', empleadoId);
 };
+
+//La propiedad computada para filtrar la lista
+const empleadosFiltrados = computed(() => {
+    if (!terminoBusqueda.value) {
+        return empleados.value;
+    }
+
+    const termino = terminoBusqueda.value.toLowerCase();
+
+    return empleados.value.filter(empleado => {
+        // Busca coincidencia en nombre, apellido o cargo
+        return empleado.nombre.toLowerCase().includes(termino) ||
+               empleado.apellido.toLowerCase().includes(termino) ||
+               empleado.cargo.toLowerCase().includes(termino);
+    });
+});
 
 onMounted(cargarEmpleados);
 </script>
 
 <template>
-  <div class="empleados-view-container">
-    <h1 class="mb-4 display-5">GESTIÓN DE EMPLEADOS</h1> <button
-      class="btn btn-primary btn-lg mb-3"
-      @click="mostrarFormulario = true"
-      v-if="!mostrarFormulario"
-    >
-      + Registrar Nuevo Empleado
-    </button>
+  <div class="empleados-view-container">
+    <h1 class="mb-4 display-5">GESTIÓN DE EMPLEADOS</h1> 
 
-    <EmpleadoFormulario
-      v-if="mostrarFormulario"
-      @empleado-registrado="cargarEmpleados"
-      @cancelar="mostrarFormulario = false"
-      class="mb-4"
-    />
+    <div v-if="!mostrarFormulario">
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            
+            <button
+                class="btn btn-primary btn-lg"
+                @click="mostrarFormulario = true"
+            >
+                + Registrar Nuevo Empleado
+            </button>
 
-    <EmpleadosTabla
-    v-if="!mostrarFormulario"
-      :lista-empleados="empleados"
-      @editar-empleado="abrirEdicion"
-    />
-  </div>
+            <div class="input-group" style="width: 40%;">
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    placeholder="Buscar por Nombre, Apellido o Cargo..." 
+                    v-model="terminoBusqueda" 
+                />
+                <span class="input-group-text">🔍</span>
+            </div>
+        </div>
+        
+      <EmpleadosTabla :lista-empleados="empleadosFiltrados" @editar-empleado="abrirEdicion"/>
+    </div>
+
+     <div v-else>
+        <EmpleadoFormulario @empleado-registrado="cargarEmpleados" @cancelar="mostrarFormulario = false" class="mb-4" />
+    </div>
+
+  </div>
 </template>
-
-
 
 <style scoped>
 h1 {
