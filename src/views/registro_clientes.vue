@@ -18,6 +18,7 @@ const cliente = reactive({
   <div class="main-content">
     
     <div class="form-container">
+      
       <div class="card client-form-card p-4 shadow-lg">
         
         <div class="text-center mb-4">

@@ -1,9 +1,11 @@
 <template>
-  <div class="container-fluid login-bg d-flex justify-content-center align-items-center vh-100">
-    <div class="card login-card p-4 shadow">
 
+  <div class="container-fluid login-bg d-flex justify-content-center align-items-center vh-100">
+
+    <div class="card login-card p-4 shadow">
           <img src="/logo.png" class="logo" alt="Vite logo" />
       <h3 class="text-center mb-4 text-muted">Iniciar Sesión</h3>
+      
       <form>
         <div class="mb-3">
           <label for="username" class="form-label text-muted" required >Usuario</label>
