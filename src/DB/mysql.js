@@ -1,7 +1,6 @@
-import { Sequelize } from 'sequelize';
+import { Sequelize, DataTypes } from 'sequelize';
 import config from '../backend/config.js';
 
-// Configurar Sequelize
 const sequelize = new Sequelize(
   config.mysql.database,
   config.mysql.user,
@@ -13,109 +12,102 @@ const sequelize = new Sequelize(
   }
 );
 
+// Modelo Cliente ajustado a tu estructura real
+const Cliente = sequelize.define('Cliente', {
+  id_cliente: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    field: 'id_cliente' // Mapear explícitamente si es necesario
+  },
+  cedula: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    unique: {
+      msg: 'La cédula ya está registrada'
+    },
+    validate: {
+      notEmpty: {
+        msg: 'La cédula es requerida'
+      }
+    }
+  },
+  nombre: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notEmpty: {
+        msg: 'El nombre es requerido'
+      },
+      len: {
+        args: [2, 100],
+        msg: 'El nombre debe tener entre 2 y 100 caracteres'
+      }
+    }
+  },
+  apellido: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notEmpty: {
+        msg: 'El apellido es requerido'
+      }
+    }
+  },
+  correo: { // Nota: en tu tabla es 'correo', no 'email'
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    unique: {
+      msg: 'El correo ya está registrado'
+    },
+    validate: {
+      isEmail: {
+        msg: 'Debe ser un correo electrónico válido'
+      },
+      notEmpty: {
+        msg: 'El correo es requerido'
+      }
+    }
+  },
+  direccion: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  telefono: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    validate: {
+      len: {
+        args: [8, 20],
+        msg: 'El teléfono debe tener entre 8 y 20 caracteres'
+      }
+    }
+  }
+}, {
+  tableName: 'cliente', // Nombre exacto de tu tabla
+  timestamps: false, // Si no tienes campos de timestamp
+  // Si tienes campos de timestamp con otros nombres:
+  // timestamps: true,
+  // createdAt: 'fecha_creacion',
+  // updatedAt: 'fecha_actualizacion'
+});
+
 // Conectar a la base de datos
-async function conMysql() {
+async function conectarDB() {
   try {
     await sequelize.authenticate();
-    console.log('DB conectada con Sequelize');
+    console.log('✅ DB conectada con Sequelize');
   } catch (error) {
-    console.log('Error de conexión:', error);
-    setTimeout(conMysql, 200);
+    console.error('❌ Error de conexión:', error.message);
+    setTimeout(conectarDB, 2000);
   }
 }
 
-conMysql();
+conectarDB();
 
-// Funciones para operaciones CRUD
-function traertodos(tabla) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const [resultados] = await sequelize.query(`SELECT * FROM ${tabla}`);
-      resolve(resultados);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function traeruno(tabla, id) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const [resultados] = await sequelize.query(
-        `SELECT * FROM ${tabla} WHERE id_cliente = ?`,
-        { replacements: [id] }
-      );
-      resolve(resultados);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function insertar(tabla, data) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const campos = Object.keys(data).join(', ');
-      const valores = Object.values(data);
-      const placeholders = Object.keys(data).map(() => '?').join(', ');
-      
-      const [resultado] = await sequelize.query(
-        `INSERT INTO ${tabla} (${campos}) VALUES (${placeholders})`,
-        { replacements: valores }
-      );
-      resolve(resultado);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function actualizar(tabla, data) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const id = data.id_cliente;
-      delete data.id_cliente;
-
-      const campos = Object.keys(data).map(campo => `${campo} = ?`).join(', ');
-      const valores = Object.values(data);
-      valores.push(id); // Para el WHERE
-
-      const [resultado] = await sequelize.query(
-        `UPDATE ${tabla} SET ${campos} WHERE id_cliente = ?`,
-        { replacements: valores }
-      );
-      resolve(resultado);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function agregar(tabla, datos) {
-  if (datos && datos.id_cliente == 0) {
-    return insertar(tabla, datos);
-  } else {
-    return actualizar(tabla, datos);
-  }
-}
-
-function eliminar(tabla, data) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const [resultado] = await sequelize.query(
-        `DELETE FROM ${tabla} WHERE id_cliente = ?`,
-        { replacements: [data.id_cliente] }
-      );
-      resolve(resultado);
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-export default {
-  traertodos,
-  traeruno,
-  agregar,
-  eliminar
+const models = {
+  Cliente,
+  sequelize
 };
+
+export default models;
