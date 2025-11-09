@@ -1,5 +1,5 @@
 import express from 'express';
-import { vehiculoController } from '../controllers/vehiculoController.js'; // ← CORREGIDO
+import { vehiculoController } from '../controllers/vehiculoController.js';
 
 const router = express.Router();
 

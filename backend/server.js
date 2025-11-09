@@ -94,7 +94,7 @@ app.use((error, req, res, next) => {
 // ==================== INICIAR SERVIDOR ====================
 app.listen(PORT, () => {
   console.log('='.repeat(70));
-  console.log('🚗 MECANOSOFT - SISTEMA ADMINISTRATivo PARA TALLER MECÁNICO');
+  console.log('🚗 MECANOSOFT - SISTEMA ADMINISTRATIVO PARA TALLER MECÁNICO');
   console.log('='.repeat(70));
   console.log(`📡 Servidor ejecutándose en: http://localhost:${PORT}`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/api/health`);

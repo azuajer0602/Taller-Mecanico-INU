@@ -1,4 +1,3 @@
-// models/Vehiculo.js
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/bd.js';
 
