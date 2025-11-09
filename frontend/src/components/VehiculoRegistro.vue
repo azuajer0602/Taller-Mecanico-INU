@@ -6,7 +6,7 @@
         <h2 class="mb-0">
           <i class="fas fa-car me-2"></i>Gestión de Vehículos
         </h2>
-        <p class="text-muted mb-0">Administra el registro de vehículos del taller</p>
+       
       </div>
       <div class="col-auto">
         <button 
@@ -49,20 +49,31 @@
                   :class="{'is-invalid': errorPlaca}"
                   placeholder="Ej: ABC123"
                   maxlength="10"
-                  @input="vehiculo.placa = vehiculo.placa.toUpperCase()"
+                  @input="validarPlacaEnTiempoReal"
+                  @blur="validarPlacaFinal"
                 >
                 <div v-if="errorPlaca" class="invalid-feedback">
                   {{ errorPlaca }}
                 </div>
-                <small class="form-text text-muted">La placa no se puede modificar una vez registrada</small>
+                
               </div>
               
               <div class="mb-3">
                 <label class="form-label">Marca *</label>
-                <select class="form-select" v-model="vehiculo.marca" required :disabled="loading">
-                  <option value="">Seleccionar marca</option>
-                  <option v-for="marca in marcas" :key="marca" :value="marca">{{ marca }}</option>
-                </select>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  v-model="vehiculo.marca" 
+                  required 
+                  :disabled="loading"
+                  :class="{'is-invalid': errorMarca}"
+                  placeholder="Ej: Toyota"
+                  @input="filtrarSoloLetras('marca')"
+                  @blur="validarMarca"
+                >
+                <div v-if="errorMarca" class="invalid-feedback">
+                  {{ errorMarca }}
+                </div>
               </div>
               
               <div class="mb-3">
@@ -101,8 +112,13 @@
                   class="form-control" 
                   v-model="vehiculo.color" 
                   :disabled="loading"
+                  :class="{'is-invalid': errorColor}"
                   placeholder="Ej: Rojo"
+                  @input="filtrarSoloLetras('color')"
                 >
+                <div v-if="errorColor" class="invalid-feedback">
+                  {{ errorColor }}
+                </div>
               </div>
               
               <div class="mb-3">
@@ -112,8 +128,13 @@
                   class="form-control" 
                   v-model="vehiculo.cliente" 
                   :disabled="loading"
+                  :class="{'is-invalid': errorCliente}"
                   placeholder="Ej: Juan Pérez"
+                  @input="filtrarSoloLetras('cliente')"
                 >
+                <div v-if="errorCliente" class="invalid-feedback">
+                  {{ errorCliente }}
+                </div>
                 <small class="form-text text-muted">Nombre del cliente propietario</small>
               </div>
             </div>
@@ -375,6 +396,9 @@ export default {
       mensajeTipo: 'alert-success',
       mensajeIcono: 'fa-check',
       errorPlaca: '',
+      errorMarca: '',
+      errorColor: '',
+      errorCliente: '',
       vehiculoEditId: null,
       
       marcas: [
@@ -417,6 +441,50 @@ export default {
     }
   },
   methods: {
+    // Validaciones
+    validarPlaca(placa) {
+      const regex = /^[A-Z0-9]+$/i;
+      if (!regex.test(placa)) {
+        return 'La placa solo puede contener letras y números (sin espacios ni caracteres especiales)';
+      }
+      if (placa.length < 3) {
+        return 'La placa debe tener al menos 3 caracteres';
+      }
+      return '';
+    },
+
+    validarTexto(texto) {
+      if (!texto) return '';
+      const regex = /^[A-ZÁÉÍÓÚÑ\s]+$/i;
+      if (!regex.test(texto)) {
+        return 'Este campo solo puede contener letras y espacios';
+      }
+      return '';
+    },
+
+    validarPlacaEnTiempoReal() {
+      this.vehiculo.placa = this.vehiculo.placa.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      this.errorPlaca = '';
+    },
+
+    validarPlacaFinal() {
+      this.errorPlaca = this.validarPlaca(this.vehiculo.placa);
+    },
+
+    filtrarSoloLetras(campo) {
+      this.vehiculo[campo] = this.vehiculo[campo].replace(/[^A-ZÁÉÍÓÚÑ\s]/gi, '');
+    },
+
+    validarMarca() {
+      const error = this.validarTexto(this.vehiculo.marca);
+      if (error) {
+        this.errorMarca = error;
+      } else {
+        this.errorMarca = '';
+      }
+    },
+
+    // Métodos principales
     async cargarVehiculos() {
       this.loading = true;
       try {
@@ -446,6 +514,39 @@ export default {
     },
 
     async guardarVehiculo() {
+      // Validaciones en frontend antes de enviar
+      const errores = [];
+      
+      this.errorPlaca = this.validarPlaca(this.vehiculo.placa);
+      if (this.errorPlaca) errores.push(this.errorPlaca);
+      
+      const errorMarca = this.validarTexto(this.vehiculo.marca);
+      if (errorMarca) {
+        this.errorMarca = errorMarca;
+        errores.push(errorMarca);
+      }
+      
+      const errorColor = this.validarTexto(this.vehiculo.color);
+      if (errorColor) {
+        this.errorColor = errorColor;
+        errores.push(errorColor);
+      }
+      
+      const errorCliente = this.validarTexto(this.vehiculo.cliente);
+      if (errorCliente) {
+        this.errorCliente = errorCliente;
+        errores.push(errorCliente);
+      }
+
+      if (errores.length > 0) {
+        this.mostrarMensaje(
+          'Por favor corrija los errores en el formulario', 
+          'alert-danger', 
+          'fa-exclamation-triangle'
+        );
+        return;
+      }
+
       if (!this.formValido) {
         this.mostrarMensaje(
           'Por favor complete todos los campos requeridos (Placa, Marca, Modelo, Año)', 
@@ -456,27 +557,24 @@ export default {
       }
 
       this.loading = true;
-      this.errorPlaca = '';
 
       try {
         // Preparar datos para el backend
         const datosParaBackend = {
+          matricula: this.vehiculo.placa.toUpperCase().trim(),
           marca: this.vehiculo.marca,
           modelo: this.vehiculo.modelo,
-          año: parseInt(this.vehiculo.año),
-          placa: this.vehiculo.placa.toUpperCase().trim(),
+          afio: parseInt(this.vehiculo.año),
           color: this.vehiculo.color || '',
-          cliente: this.vehiculo.cliente || 'Sin especificar'
+          id_cliente: null
         };
 
         let url, method;
         
         if (this.vehiculoEditando) {
-          // Editar vehículo existente
           method = 'PUT';
           url = `${API_BASE}/vehiculos/${this.vehiculoEditId}`;
         } else {
-          // Crear nuevo vehículo
           method = 'POST';
           url = `${API_BASE}/vehiculos`;
         }
@@ -500,8 +598,8 @@ export default {
           await this.cargarVehiculos();
           this.limpiarFormulario();
         } else {
-          if (data.message.includes('placa') || data.message.includes('duplicada')) {
-            this.errorPlaca = data.message;
+          if (data.message.includes('matrícula') || data.message.includes('duplicada')) {
+            this.errorPlaca = 'Esta placa ya está registrada en el sistema';
           } else {
             this.mostrarMensaje('Error: ' + data.message, 'alert-danger', 'fa-exclamation-triangle');
           }
@@ -582,6 +680,9 @@ export default {
       };
       this.vehiculoEditId = null;
       this.errorPlaca = '';
+      this.errorMarca = '';
+      this.errorColor = '';
+      this.errorCliente = '';
       this.mensaje = '';
     },
 

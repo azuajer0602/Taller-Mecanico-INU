@@ -1,5 +1,5 @@
 import express from 'express';
-import { diagnosticoController } from '../controllers/diagnosticoController.js';
+import { diagnosticoController } from '../controllers/DiagnosticoController.js';
 
 const router = express.Router();
 
