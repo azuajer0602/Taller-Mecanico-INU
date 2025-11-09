@@ -18,42 +18,45 @@ const Cliente = sequelize.define('Cliente', {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
-    field: 'id_cliente' // Mapear explícitamente si es necesario
+    field: 'id_cliente' // Mapear explícitamente 
   },
   cedula: {
     type: DataTypes.STRING(20),
     allowNull: false,
-    unique: {
-      msg: 'La cédula ya está registrada'
-    },
+  //  unique: {
+  //    msg: 'La cédula ya está registrada'
+  //  },
     validate: {
       notEmpty: {
         msg: 'La cédula es requerida'
       }
     }
   },
-  nombre: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        msg: 'El nombre es requerido'
-      },
-      len: {
-        args: [2, 100],
-        msg: 'El nombre debe tener entre 2 y 100 caracteres'
+ nombre: {
+  type: DataTypes.STRING(100),
+  allowNull: false,
+  validate: {
+    notEmpty: { msg: 'El nombre es requerido' },
+    len: { args: [2, 100], msg: 'El nombre debe tener entre 2 y 100 caracteres' },
+    isAlphaSpace(value) {
+      if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/u.test(value)) {
+        throw new Error('El nombre solo puede contener letras, espacios, guiones y apóstrofes');
       }
     }
-  },
-  apellido: {
-    type: DataTypes.STRING(100),
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        msg: 'El apellido es requerido'
+  }
+},
+apellido: {
+  type: DataTypes.STRING(100),
+  allowNull: false,
+  validate: {
+    notEmpty: { msg: 'El apellido es requerido' },
+    isAlphaSpace(value) {
+      if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/u.test(value)) {
+        throw new Error('El apellido solo puede contener letras, espacios, guiones y apóstrofes');
       }
     }
-  },
+  }
+},
   correo: { // Nota: en tu tabla es 'correo', no 'email'
     type: DataTypes.STRING(100),
     allowNull: false,
@@ -80,16 +83,23 @@ const Cliente = sequelize.define('Cliente', {
       len: {
         args: [8, 20],
         msg: 'El teléfono debe tener entre 8 y 20 caracteres'
+      },
+      isNumericOrEmpty(value) {
+      if (value) {
+        if (!/^\d+$/.test(value)) {
+          throw new Error('El teléfono solo puede contener dígitos');
+        }
+        if (value.length < 8 || value.length > 20) {
+          throw new Error('El teléfono debe tener entre 8 y 20 caracteres');
+        }
       }
+    }
+
     }
   }
 }, {
-  tableName: 'cliente', // Nombre exacto de tu tabla
-  timestamps: false, // Si no tienes campos de timestamp
-  // Si tienes campos de timestamp con otros nombres:
-  // timestamps: true,
-  // createdAt: 'fecha_creacion',
-  // updatedAt: 'fecha_actualizacion'
+  tableName: 'cliente', // Nombre exacto de la tabla
+  timestamps: false, 
 });
 
 // Conectar a la base de datos

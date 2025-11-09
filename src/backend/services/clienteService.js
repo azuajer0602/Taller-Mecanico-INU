@@ -1,5 +1,6 @@
 import models from '../../DB/mysql.js';
 import { Op } from 'sequelize';
+
 class ClienteService {
   // Traer todos los clientes con paginación
   async traerTodos(opciones = {}) {
@@ -60,6 +61,10 @@ class ClienteService {
     }
 
     try {
+      // Normalizar datos
+      data.cedula = String(data.cedula).trim();
+      data.correo = String(data.correo).trim().toLowerCase();
+
       // Verificar si la cédula ya existe
       const clientePorCedula = await models.Cliente.findOne({
         where: { cedula: data.cedula }
@@ -90,7 +95,7 @@ class ClienteService {
     }
   }
 
-  // Actualizar cliente
+  // Actualizar cliente - CORREGIDO
   async actualizar(id, data) {
     if (!id || !Number.isInteger(Number(id))) {
       throw new Error('ID de cliente inválido');
@@ -103,37 +108,62 @@ class ClienteService {
         throw new Error('Cliente no encontrado');
       }
 
-      // Si se intenta cambiar la cédula, verificar que no exista
+      // Normalizar datos de entrada
+      if (data.cedula) data.cedula = String(data.cedula).trim();
+      if (data.correo) data.correo = String(data.correo).trim().toLowerCase();
+
+      // DEBUG: Ver qué datos estamos comparando
+      console.log('=== DEBUG ACTUALIZAR CLIENTE ===');
+      console.log('Cliente actual:', {
+        id: cliente.id,
+        cedula: cliente.cedula,
+        correo: cliente.correo
+      });
+      console.log('Datos nuevos:', data);
+
+      // Si se intenta cambiar la cédula, verificar que no exista en OTRO cliente
       if (data.cedula && data.cedula !== cliente.cedula) {
         const cedulaExistente = await models.Cliente.findOne({
-          where: { cedula: data.cedula }
+          where: { 
+            cedula: data.cedula,
+            id_cliente: { [Op.ne]: id } // EXCLUIR el cliente actual
+          }
         });
 
+        console.log('Resultado verificación cédula:', cedulaExistente ? 'ENCONTRADA' : 'NO ENCONTRADA');
+
         if (cedulaExistente) {
-          throw new Error('La cédula ya está registrada');
+          throw new Error('La cédula ya está registrada en otro cliente');
         }
       }
 
-      // Si se intenta cambiar el correo, verificar que no exista
+      // Si se intenta cambiar el correo, verificar que no exista en OTRO cliente
       if (data.correo && data.correo !== cliente.correo) {
         const correoExistente = await models.Cliente.findOne({
-          where: { correo: data.correo }
+          where: { 
+            correo: data.correo,
+            id_cliente: { [Op.ne]: id } // EXCLUIR el cliente actual
+          }
         });
 
+        console.log('Resultado verificación correo:', correoExistente ? 'ENCONTRADO' : 'NO ENCONTRADO');
+
         if (correoExistente) {
-          throw new Error('El correo ya está registrado');
+          throw new Error('El correo ya está registrado en otro cliente');
         }
       }
 
       await cliente.update(data);
+      console.log('Cliente actualizado exitosamente');
       return cliente;
 
     } catch (error) {
+      console.error('Error en actualizar:', error);
       if (error.name === 'SequelizeValidationError') {
         const mensajes = error.errors.map(err => err.message);
         throw new Error(`Error de validación: ${mensajes.join(', ')}`);
       }
-      throw new Error(`Error al actualizar cliente: ${error.message}`);
+      throw error;
     }
   }
 
@@ -163,8 +193,6 @@ class ClienteService {
     const { limite = 10 } = opciones;
 
     try {
-     
-      
       const clientes = await models.Cliente.findAll({
         where: {
           [Op.or]: [
@@ -187,7 +215,7 @@ class ClienteService {
   async buscarPorCedula(cedula) {
     try {
       const cliente = await models.Cliente.findOne({
-        where: { cedula }
+        where: { cedula: String(cedula).trim() }
       });
 
       return cliente;
