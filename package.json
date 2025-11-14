@@ -5,11 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "nodemon src/backend/app.js",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "morgan": "^1.10.1",
+    "mysql2": "^3.15.3",
+    "nodemon": "^3.1.11",
+    "sequelize": "^6.37.7",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
   },

@@ -1,67 +1,52 @@
 <template>
-  <div class="card border-0 shadow-lg form-card-custom">
-    <div class="card-header bg-custom-primary text-white">
-      Registrar Nuevo Empleado
+  <div class="card shadow-sm border-0 form-card-custom">
+    <div class="card-header text-white"> 
+      {{ isEditing ? 'EDITAR EMPLEADO' : 'REGISTRAR NUEVO EMPLEADO' }}
     </div>
+    <div class="card-body"> 
+      <form @submit.prevent="handleSubmit">
+        <div class="row g-3">
+          
+          <div class="col-md-6">
+            <label for="usuario" class="form-label">Usuario:</label>
+            <input type="text" class="form-control" id="usuario" v-model.trim="empleadoLocal.usuario" required />
+          </div>
+          <div class="col-md-6">
+            <label for="contrasena" class="form-label">Contraseña: <small v-if="isEditing" class="text-muted"></small></label>
+            <input type="password" class="form-control" id="contrasena" v-model="empleadoLocal.contrasena" :required="!isEditing" />
+          </div>
 
-    <div class="card-body">
-      <form @submit.prevent="guardarEmpleado">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="nombre" class="form-label">Nombre</label>
-            <input type="text" class="form-control" id="nombre" v-model="empleado.nombre" required>
+          <div class="col-md-6">
+            <label for="nombre_emp" class="form-label">Nombre:</label>
+            <input type="text" class="form-control" id="nombre_emp" v-model.trim="empleadoLocal.nombre_emp" required />
           </div>
-          <div class="col-md-6 mb-3">
-            <label for="apellido" class="form-label">Apellido</label>
-            <input type="text" class="form-control" id="apellido" v-model="empleado.apellido" required>
+          <div class="col-md-6">
+            <label for="apellido_emp" class="form-label">Apellido:</label>
+            <input type="text" class="form-control" id="apellido_emp" v-model.trim="empleadoLocal.apellido_emp" required />
           </div>
+
+          <div class="col-md-6">
+            <label for="cargo" class="form-label">Cargo:</label>
+            <input type="text" class="form-control" id="cargo" v-model.trim="empleadoLocal.cargo" required />
+          </div>
+          <div class="col-md-6">
+            <label for="sueldo_base" class="form-label">Sueldo Base ($):</label>
+            <input type="number" step="0.01" class="form-control" id="sueldo_base" v-model.number="empleadoLocal.sueldo_base" required />
+          </div>
+
+          <div class="col-12">
+            <label for="fecha_contratacion" class="form-label">Fecha Contratación:</label>
+            <input type="date" class="form-control" id="fecha_contratacion" v-model="empleadoLocal.fecha_contratacion" required />
+          </div>
+
         </div>
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="cargo" class="form-label">Cargo</label>
-            <input type="text" class="form-control" id="cargo" v-model="empleado.cargo" required>
-          </div>
-          <div class="col-md-6 mb-3">
-            <label for="sueldoBase" class="form-label">Sueldo Base ($)</label>
-            <input type="number" class="form-control" id="sueldoBase" v-model.number="empleado.sueldoBase" required>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="fechaIngreso" class="form-label">Fecha de Ingreso</label>
-            <input type="date" class="form-control" id="fechaIngreso" v-model="empleado.fechaIngreso" required>
-          </div>
-          <div class="col-md-6 mb-3">
-            <label for="contacto" class="form-label">Contacto (Teléfono)</label>
-            <input type="tel" class="form-control" id="contacto" v-model="empleado.contacto">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="tipoContrato" class="form-label">Tipo de Contrato</label>
-            <select class="form-select" id="tipoContrato" v-model="empleado.tipoContrato" required>
-              <option value="">Seleccione contrato</option>
-              <option value="Indefinido">Indefinido</option>
-              <option value="Temporal">Temporal</option>
-              <option value="Por Proyecto">Por Proyecto</option>
-            </select>
-          </div>
-          <div class="col-md-6 mb-3">
-            <label for="estado" class="form-label">Estado</label>
-            <select class="form-select" id="estado" v-model="empleado.estado" required>
-              <option value="Activo">Activo</option>
-              <option value="Vacaciones">Vacaciones</option>
-              <option value="Inactivo">Inactivo</option>
-            </select>
-          </div>
-        </div>
         <div class="d-flex justify-content-end mt-4">
-          <button type="button" class="btn btn-secondary me-2" @click="$emit('cancelar')">
+          <button type="button" class="btn btn-secondary me-2" @click="handleCancel">
             Cancelar
           </button>
-          <button type="submit" class="btn btn-success">
-            Guardar Empleado
+          <button type="submit" class="btn btn-primary btn-guardar">
+            {{ isEditing ? 'Guardar Cambios' : 'Registrar Empleado' }}
           </button>
         </div>
       </form>
@@ -70,67 +55,69 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch, computed } from 'vue';
 
-const emit = defineEmits(['empleado-registrado', 'cancelar']);
-
-// Los valores iniciales reflejan los campos
-const empleado = ref({
-  nombre: '',
-  apellido: '',
+const modeloEmpleadoBase = {
+  id_empleado: null,
+  usuario: '',
+  contrasena: '',
+  nombre_emp: '',
+  apellido_emp: '',
   cargo: '',
-  sueldoBase: 0,
-  fechaIngreso: new Date().toISOString().split('T')[0],
-  contacto: '',
-  tipoContrato: '',
-  estado: 'Activo',
+  sueldo_base: 0.00,
+  fecha_contratacion: new Date().toISOString().substring(0, 10),
+};
+
+const props = defineProps({
+  empleadoAEditar: {
+    type: Object,
+    default: null,
+  },
 });
 
-const guardarEmpleado = () => {
-  if (!empleado.value.nombre || !empleado.value.cargo) {
-    alert('Por favor complete los campos obligatorios.');
-    return;
+const empleadoLocal = ref({ ...modeloEmpleadoBase });
+const emit = defineEmits(['guardar-empleado', 'cancelar-edicion']);
+const isEditing = computed(() => !!props.empleadoAEditar && !!props.empleadoAEditar.id_empleado);
+
+watch(() => props.empleadoAEditar, (nuevoEmpleado) => {
+  if (nuevoEmpleado && nuevoEmpleado.id_empleado) {
+    empleadoLocal.value = { ...nuevoEmpleado, contrasena: '' };
+  } else {
+    empleadoLocal.value = { ...modeloEmpleadoBase };
   }
+}, { immediate: true });
 
-  console.log('Empleado a guardar:', empleado.value);
-  alert(`Empleado ${empleado.value.nombre} registrado con éxito.`);
+const handleSubmit = () => {
+  emit('guardar-empleado', empleadoLocal.value);
+};
 
-  // Limpia el formulario y emite el evento
-  empleado.value = {
-    nombre: '',
-    apellido: '',
-    cargo: '',
-    sueldoBase: 0,
-    fechaIngreso: new Date().toISOString().split('T')[0],
-    contacto: '',
-    tipoContrato: '',
-    estado: 'Activo',
-  };
-  emit('empleado-registrado');
+const handleCancel = () => {
+  empleadoLocal.value = { ...modeloEmpleadoBase };
+  emit('cancelar-edicion'); 
 };
 </script>
 
 <style scoped>
-/* Estilos para el formulario y botones */
 .form-card-custom {
-    background-color: #D8D8C0; /* Gris Claro */
+    background-color: #D8D8C0; 
+    border-radius: 8px;
+   
+    display: block !important; 
+    width: 100% !important;
+    z-index: 10;
 }
-
 .card-header {
-  font-weight: 600;
-  background-color: #DF8615 !important; 
-  font-size: 1.25rem;
+    font-weight: 600;
+    background-color: #7A8370 !important;
+    font-size: 1.1rem;
+    color: white !important;
 }
-.form-label {
-    font-weight: 500;
-}
-
-.btn-success {
+.btn-guardar {
     background-color: #DF8615;
     border-color: #DF8615;
+    color: white;
 }
-
-.btn-success:hover {
+.btn-guardar:hover {
     background-color: #F84600;
     border-color: #F84600;
 }
