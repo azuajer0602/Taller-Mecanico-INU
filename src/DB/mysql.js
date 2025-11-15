@@ -23,9 +23,9 @@ const Cliente = sequelize.define('Cliente', {
   cedula: {
     type: DataTypes.STRING(20),
     allowNull: false,
-  //  unique: {
-  //    msg: 'La cédula ya está registrada'
-  //  },
+    unique: {
+    msg: 'La cédula ya está registrada'
+ },
     validate: {
       notEmpty: {
         msg: 'La cédula es requerida'
