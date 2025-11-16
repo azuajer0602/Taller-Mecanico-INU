@@ -8,6 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+# Dependency directories
+node_modules/
+
+# Build output
 dist
 dist-ssr
 *.local
@@ -22,3 +26,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Environment variables
+.env.local
+.env.*.local
+
+# Temporary and backup files
+temp_backup/

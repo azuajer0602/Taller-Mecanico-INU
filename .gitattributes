@@ -1,0 +1,18 @@
+# Archivo de configuración de Git para normalizar los finales de línea.
+# Esto asegura consistencia a través de diferentes sistemas operativos.
+
+# Configura el comportamiento por defecto para autodetectar archivos de texto.
+# Git convertirá los finales de línea a LF al guardar en el repositorio.
+* text=auto
+
+# Fuerza a que los siguientes tipos de archivo siempre usen LF en el repositorio.
+*.js      eol=lf
+*.vue     eol=lf
+*.css     eol=lf
+*.html    eol=lf
+*.json    eol=lf
+*.md      eol=lf
+*.gitignore eol=lf
+
+# Marca los archivos binarios para que Git no los modifique.
+*.png     binary

@@ -365,10 +365,10 @@ export default {
 
 /* Main Content */
 .main-content {
-  padding: 20px;
   min-height: 100vh;
-  margin-left: 250px;
   background-color: #f8f9fa;
+  padding: 20px 20px 20px 40px;
+  overflow-y: auto;
 }
 
 /* Header */
@@ -567,11 +567,8 @@ export default {
 
 /* Ajustes de altura para evitar scroll */
 .main-content {
-padding-left: 40px;
-  overflow-y: auto;
+  margin-top: 1rem;
 }
-
-
 
 .col-12 .card {
   margin-top: 1rem;

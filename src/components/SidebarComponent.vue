@@ -15,19 +15,14 @@
         <span class="nav-text">Diagnóstico Técnico</span>
       </router-link>
 
-      <router-link to="/clientes" class="nav-link" active-class="active">
-        <span class="nav-icon">👥</span>
-        <span class="nav-text">Clientes</span>
-      </router-link>
-
-      <router-link to="/contacto" class="nav-link" active-class="active">
-        <span class="nav-icon">📧</span>
-        <span class="nav-text">Contacto</span>
-      </router-link>
-
       <router-link to="/facturacion" class="nav-link" active-class="active">
         <span class="nav-icon">🧾</span>
         <span class="nav-text">Facturación</span>
+      </router-link>
+
+      <router-link to="/gestion-gastos" class="nav-link" active-class="active">
+        <span class="nav-icon">💸</span>
+        <span class="nav-text">Gestión y Gastos</span>
       </router-link>
     </nav>
   </div>
@@ -241,4 +236,5 @@ export default {
 .nav-link:nth-child(3) { animation-delay: 0.3s; }
 .nav-link:nth-child(4) { animation-delay: 0.4s; }
 .nav-link:nth-child(5) { animation-delay: 0.5s; }
+.nav-link:nth-child(6) { animation-delay: 0.6s; }
 </style>

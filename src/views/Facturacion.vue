@@ -1,13 +1,30 @@
 <template>
   <div class="container mt-4">
+    <!-- Modal de Historial -->
+    <div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header bg-secondary text-white">
+            <h5 class="modal-title" id="historialModalLabel">
+              <i class="bi bi-clock-history me-2"></i>Historial de Facturas
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <HistorialFacturas ref="historialComponent" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card shadow">
-      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <div class="card-header bg-primary text-white">
         <h1 class="mb-0 h3">
           <i class="bi bi-receipt-cutoff me-2"></i>Módulo de Facturación
         </h1>
-        <button class="btn btn-light btn-sm" @click="abrirHistorial">
-          <i class="bi bi-clock-history me-1"></i> Historial
-        </button>
       </div>
 
       <div class="card-body">
@@ -87,53 +104,17 @@
 
           <!-- TOTAL -->
           <div class="form-section text-end">
-            <h3 class="h4">Total: {{ totalFactura.toFixed(2) }} {{ monedaSimbolo }}</h3>
-            <button type="submit" class="btn btn-primary btn-lg">
-              <i class="bi bi-file-earmark-pdf-fill me-2"></i>Generar Factura
-            </button>
+            <h3 class="h4 mb-3">Total: {{ totalFactura.toFixed(2) }} {{ monedaSimbolo }}</h3>
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary btn-lg" data-bs-toggle="modal" data-bs-target="#historialModal" @click="abrirHistorial">
+                <i class="bi bi-clock-history me-2"></i>Ver Historial
+              </button>
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-file-earmark-pdf-fill me-2"></i>Generar Factura
+              </button>
+            </div>
           </div>
         </form>
-      </div>
-    </div>
-
-    <!-- Modal de Historial -->
-    <div class="modal fade" :class="{ 'show d-block': mostrarHistorial }" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-      <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Historial de Facturas</h5>
-            <button type="button" class="btn-close" @click="cerrarHistorial"></button>
-          </div>
-          <div class="modal-body">
-            <div v-if="historialFacturas.length === 0" class="text-center text-muted">
-              No hay facturas en el historial.
-            </div>
-            <table v-else class="table table-striped table-hover">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Cliente</th>
-                  <th>Total</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(factura, index) in historialFacturas" :key="index">
-                  <td>{{ new Date(factura.fechaCreacion).toLocaleDateString() }}</td>
-                  <td>{{ factura.cliente.nombre }} {{ factura.cliente.apellido }}</td>
-                  <td>{{ factura.total.toFixed(2) }} {{ factura.moneda }}</td>
-                  <td><span class="badge" :class="factura.pago.estado === 'Pagado' ? 'bg-success' : 'bg-warning'">{{ factura.pago.estado }}</span></td>
-                  <td><button class="btn btn-sm btn-info" @click="cargarFactura(factura)" title="Cargar Factura"><i class="bi bi-arrow-down-circle"></i></button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-danger" @click="limpiarHistorial" :disabled="historialFacturas.length === 0">Limpiar Historial</button>
-            <button type="button" class="btn btn-secondary" @click="cerrarHistorial">Cerrar</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -142,8 +123,12 @@
 <script setup>
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { ref, computed, onMounted } from "vue";
+import { ref, computed } from "vue";
+import HistorialFacturas from './HistorialFacturas.vue'; // Importamos el componente
 import logoUrl from '../assets/logo.png';
+
+// Referencia al componente hijo para poder llamar a sus métodos
+const historialComponent = ref(null);
 
 const cliente = ref({
   nombre: "",
@@ -171,33 +156,6 @@ const pago = ref({
 
 const productos = ref([{ descripcion: "", cantidad: 1, precio: 0 }]);
 
-const historialFacturas = ref([]);
-const mostrarHistorial = ref(false);
-
-onMounted(() => {
-  const historialGuardado = localStorage.getItem('historialFacturas');
-  if (historialGuardado) {
-    historialFacturas.value = JSON.parse(historialGuardado);
-  }
-});
-
-const abrirHistorial = () => mostrarHistorial.value = true;
-const cerrarHistorial = () => mostrarHistorial.value = false;
-
-const limpiarHistorial = () => {
-  if (confirm('¿Estás seguro de que quieres borrar todo el historial de facturas? Esta acción no se puede deshacer.')) {
-    historialFacturas.value = [];
-    localStorage.removeItem('historialFacturas');
-  }
-};
-
-const cargarFactura = (factura) => {
-  cliente.value = { ...factura.cliente };
-  pago.value = { ...factura.pago };
-  productos.value = JSON.parse(JSON.stringify(factura.productos)); // Deep copy
-  cerrarHistorial();
-};
-
 const agregarProducto = () => productos.value.push({ descripcion: "", cantidad: 1, precio: 0 });
 const eliminarProducto = (index) => productos.value.splice(index, 1);
 
@@ -215,6 +173,33 @@ const toBase64 = url => fetch(url)
     reader.readAsDataURL(blob);
   }));
 
+const guardarFacturaLocalmente = (factura) => {
+  try {
+    const facturasGuardadas = JSON.parse(localStorage.getItem('facturas') || '[]');
+    facturasGuardadas.push(factura);
+    localStorage.setItem('facturas', JSON.stringify(facturasGuardadas));
+  } catch (error) {
+    console.error("Error al guardar la factura en localStorage:", error);
+    alert("No se pudo guardar la factura localmente.");
+  }
+};
+
+const limpiarFormulario = () => {
+  cliente.value = { nombre: "", apellido: "", cedula: "", correo: "", direccion: "", telefono: "" };
+  pago.value = {
+    fechaPago: new Date().toISOString().split("T")[0],
+    estado: "Pagado",
+    metodoPago: "Divisas",
+  };
+  productos.value = [{ descripcion: "", cantidad: 1, precio: 0 }];
+};
+
+const abrirHistorial = () => {
+  // Nos aseguramos de que el historial cargue los datos más recientes al abrir la modal
+  if (historialComponent.value) {
+    historialComponent.value.fetchFacturas();
+  }
+}
 
 const generarPDF = async () => {
   if (!cliente.value.nombre || !cliente.value.apellido) {
@@ -228,20 +213,19 @@ const generarPDF = async () => {
   }
 
   try {
-    // Guardar en historial antes de generar el PDF
-    const facturaActual = {
-      cliente: { ...cliente.value },
-      pago: { ...pago.value },
-      productos: JSON.parse(JSON.stringify(productos.value)), // Deep copy para evitar reactividad
+    // Guardar factura en localStorage
+    const nuevaFactura = {
+      id: Date.now(), // ID único simple
+      fechaPago: pago.value.fechaPago,
       total: totalFactura.value,
-      moneda: monedaSimbolo.value,
-      fechaCreacion: new Date().toISOString(),
+      estado: pago.value.estado,
+      metodoPago: pago.value.metodoPago,
+      Cliente: { ...cliente.value },
+      ItemFacturas: productos.value.map(p => ({ ...p })),
     };
-    historialFacturas.value.unshift(facturaActual); // Añade al principio
-    localStorage.setItem('historialFacturas', JSON.stringify(historialFacturas.value));
+    guardarFacturaLocalmente(nuevaFactura);
 
-
-    // --- Generación de PDF ---
+    // Generación del PDF (sin cambios en esta parte)
     const doc = new jsPDF();
 
     try {
@@ -313,6 +297,14 @@ const generarPDF = async () => {
 
     const nombreArchivo = `Factura_${cliente.value.nombre.replace(/\s+/g, "_")}_${cliente.value.apellido}.pdf`;
     doc.save(nombreArchivo);
+
+    alert('Factura generada y guardada en el historial local.');
+    limpiarFormulario();
+
+    // Actualiza el historial si la modal está abierta o se abre después
+    if (historialComponent.value) {
+      historialComponent.value.fetchFacturas();
+    }
   } catch (error) {
     console.error("Error al generar PDF:", error);
     alert("Error al generar el PDF. Verifica la consola para más detalles.");
@@ -325,9 +317,6 @@ const generarPDF = async () => {
   background-color: #f8f9fa;
   padding: 1.5rem;
   border-radius: 0.5rem;
-}
-.show.d-block {
-  display: block;
 }
 .producto-item {
   padding: 0.75rem 1rem;
