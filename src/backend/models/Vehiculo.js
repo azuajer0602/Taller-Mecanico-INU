@@ -1,5 +1,7 @@
 import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
+import database from '../config/database.js'; // ← Cambio aquí
+
+const { sequelize } = database; // ← Cambio aquí
 
 const Vehiculo = sequelize.define('Vehiculo', {
   matricula: {

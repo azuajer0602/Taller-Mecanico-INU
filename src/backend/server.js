@@ -1,37 +1,31 @@
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
-import { sequelize } from './config/database.js';
+import database from './config/database.js';
+const { sequelize } = database;
 import clientes from './routes/rutas.js';
 import vehiculoRoutes from './routes/vehiculoRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
 import morgan from 'morgan';
 import error from '../red/errors.js';
 
+// ==================== INICIALIZACIÓN ====================
+const app = express(); // ← PRIMERO declarar app
+const PORT = 3000;
+
 // ==================== MIDDLEWARES ====================
-app.use(cors());
+app.use(cors()); // ← LUEGO usar app
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 
-
-const app = express();
-const PORT = 3000; 
-
-app.use(express.json());
-
-// Configuración del puerto
-app.set('port', config.app.port);
-
-//rutas
-
+// ==================== RUTAS ====================
 app.use('/api/clientes', clientes);
-
 app.use('/api/auth', authRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
 
 // ==================== RUTAS GENERALES ====================
-
 // Health Check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -71,26 +65,17 @@ app.get('/api/info', (req, res) => {
   });
 });
 
+// ==================== MANEJO DE ERRORES ====================
+app.use(error);
 
-
-app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-
-
-app.use(error)
-
-
-
+// ==================== INICIO DEL SERVIDOR ====================
 async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('Conexión a la base de datos establecida correctamente.');
 
     await sequelize.sync();
-    console.log(' Modelos sincronizados.');
-
+    console.log('Modelos sincronizados.');
 
     // Iniciar el servidor
     app.listen(PORT, () => {

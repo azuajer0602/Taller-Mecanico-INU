@@ -1,63 +1,54 @@
 import { Sequelize, DataTypes } from 'sequelize';
-import {sequelize} from '../config/database.js';
+import database from '../config/database.js'; // ← Importación por DEFECTO ✅
 
-const sequelize = new Sequelize(
-  config.mysql.database,
-  config.mysql.user,
-  config.mysql.password,
-  {
-    host: config.mysql.host,
-    dialect: 'mysql',
-    logging: false
-  }
-);
+const { sequelize } = database; // ← Desestructurar el objeto
 
-// Modelo Cliente ajustado a tu estructura real
+// Modelo Cliente (tu código actual)
 const Cliente = sequelize.define('Cliente', {
   id_cliente: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
-    field: 'id_cliente' // Mapear explícitamente 
+    field: 'id_cliente'
   },
   cedula: {
     type: DataTypes.STRING(20),
     allowNull: false,
     unique: {
-    msg: 'La cédula ya está registrada'
- },
+      msg: 'La cédula ya está registrada'
+    },
     validate: {
       notEmpty: {
         msg: 'La cédula es requerida'
       }
     }
   },
- nombre: {
-  type: DataTypes.STRING(100),
-  allowNull: false,
-  validate: {
-    notEmpty: { msg: 'El nombre es requerido' },
-    len: { args: [2, 100], msg: 'El nombre debe tener entre 2 y 100 caracteres' },
-    isAlphaSpace(value) {
-      if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/u.test(value)) {
-        throw new Error('El nombre solo puede contener letras, espacios, guiones y apóstrofes');
+  nombre: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'El nombre es requerido' },
+      len: { args: [2, 100], msg: 'El nombre debe tener entre 2 y 100 caracteres' },
+      isAlphaSpace(value) {
+        if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/u.test(value)) {
+          throw new Error('El nombre solo puede contener letras, espacios, guiones y apóstrofes');
+        }
       }
     }
-  }
-},
-apellido: {
-  type: DataTypes.STRING(100),
-  allowNull: false,
-  validate: {
-    notEmpty: { msg: 'El apellido es requerido' },
-    isAlphaSpace(value) {
-      if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/u.test(value)) {
-        throw new Error('El apellido solo puede contener letras, espacios, guiones y apóstrofes');
+  },
+  apellido: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notEmpty: { msg: 'El apellido es requerido' },
+      isAlphaSpace(value) {
+        if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/u.test(value)) {
+          throw new Error('El apellido solo puede contener letras, espacios, guiones y apóstrofes');
+        }
       }
     }
-  }
-},
-  correo: { // Nota: en tu tabla es 'correo', no 'email'
+  },
+  correo: {
     type: DataTypes.STRING(100),
     allowNull: false,
     unique: {
@@ -85,38 +76,29 @@ apellido: {
         msg: 'El teléfono debe tener entre 8 y 20 caracteres'
       },
       isNumericOrEmpty(value) {
-      if (value) {
-        if (!/^\d+$/.test(value)) {
-          throw new Error('El teléfono solo puede contener dígitos');
-        }
-        if (value.length < 8 || value.length > 20) {
-          throw new Error('El teléfono debe tener entre 8 y 20 caracteres');
+        if (value) {
+          if (!/^\d+$/.test(value)) {
+            throw new Error('El teléfono solo puede contener dígitos');
+          }
+          if (value.length < 8 || value.length > 20) {
+            throw new Error('El teléfono debe tener entre 8 y 20 caracteres');
+          }
         }
       }
     }
-
-    }
   }
 }, {
-  tableName: 'cliente', // Nombre exacto de la tabla
-  timestamps: false, 
+  tableName: 'cliente',
+  timestamps: false,
 });
 
-// Conectar a la base de datos
-async function conectarDB() {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ DB conectada con Sequelize');
-  } catch (error) {
-    console.error('❌ Error de conexión:', error.message);
-    setTimeout(conectarDB, 2000);
-  }
-}
+// ⚠️ ELIMINA esta función - la conexión ya se maneja en database.js
+// async function conectarDB() { ... }
+// conectarDB();
 
-conectarDB();
 const models = {
-  Cliente,
-  sequelize
+  Cliente
+  // ⚠️ NO exportes sequelize aquí
 };
 
 export default models;

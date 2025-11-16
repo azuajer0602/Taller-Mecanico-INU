@@ -1,5 +1,7 @@
 import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
+import database from '../config/database.js'; // ← Cambio aquí
+
+const { sequelize } = database; // ← Cambio aquí
 
 const Empleado = sequelize.define('Empleado', {
   id_empleado: { 
@@ -7,56 +9,47 @@ const Empleado = sequelize.define('Empleado', {
     primaryKey: true,
     autoIncrement: true,
   },
-
   usuario: { 
     type: DataTypes.STRING,
     allowNull: false,
     unique: true, 
   },
-
   contrasena: { 
     type: DataTypes.STRING,
     allowNull: false,
   },
-
-    nombre_emp: { 
+  nombre_emp: { 
     type: DataTypes.STRING,
     allowNull: false, 
   },
-    apellido_emp: { 
+  apellido_emp: { 
     type: DataTypes.STRING,
     allowNull: false, 
   },
-    cedula_emp: { 
+  cedula_emp: { 
     type: DataTypes.STRING,
     allowNull: false,
     unique: true, 
   },
-    cargo: { 
+  cargo: { 
     type: DataTypes.STRING,
     allowNull: false, 
   },
-    fecha_contratacion: { 
+  fecha_contratacion: { 
     type: DataTypes.DATE,
     allowNull: false, 
   },
-    sueldo_base: { 
+  sueldo_base: { 
     type: DataTypes.DECIMAL,
     allowNull: false, 
   },
- 
 }, {
-
   tableName: 'empleado', 
   freezeTableName: true, 
-
   timestamps: false,
-  
-
 });
 
 Empleado.prototype.comparePassword = function(candidatePassword) {
-  
   return candidatePassword === this.contrasena; 
 };
 

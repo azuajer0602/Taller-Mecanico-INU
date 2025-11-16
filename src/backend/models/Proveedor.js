@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
-
+import database from '../config/database.js';
+const { sequelize } = database;
 const Proveedor = sequelize.define('Proveedor', {
   id_proveedor: { 
     type: DataTypes.INTEGER,

@@ -1,4 +1,4 @@
-import models from '../models/Cliente';
+import models from '../models/Cliente.js';
 import { Op } from 'sequelize';
 
 class ClienteService {
