@@ -5,6 +5,10 @@ import RegistroEmpleados from '../views/registro_empleados.vue'
 import Inicio from '../components/SidebarComponent.vue'
 import Dash from '../components/DashboardComponent.vue'
 import Clientes from '../views/clientes.vue'
+import VehiculoRegistro from '../views/VehiculoRegistro.vue'
+import DiagnosticoTecnico from '../views/DiagnosticoTecnico.vue'
+import Facturacion from '../views/Facturacion.vue'
+import GestionGastos from "../views/GestionGastos.vue";
 
 
 const routes = [
@@ -13,7 +17,11 @@ const routes = [
   { path: '/regis_empleados', component: RegistroEmpleados },
   { path: '/sidebar', component:Inicio },
   { path: '/dash', component:Dash },
-  { path: '/clientes',component:Clientes}
+  { path: '/clientes',component:Clientes},
+  {path: '/registroVehiculo',name: 'Registro',component: VehiculoRegistro},
+  {path: '/diagnostico',name: 'Diagnostico',component: DiagnosticoTecnico},
+  { path: '/facturacion', component: Facturacion },
+  { path: "/gestion-gastos", name: "GestionGastos", component: GestionGastos }
 ]
 
 const router = createRouter({

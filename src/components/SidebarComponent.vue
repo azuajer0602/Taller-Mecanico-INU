@@ -9,34 +9,101 @@
       <img id="logo-img" src="../assets/logo.png" alt="Logo">
     </div>
     <nav class="sidebar-nav">
-      <a href="#dashboard" class="nav-link active">
-        <span class="nav-icon">📊</span>
-        <span><router-link to="/dash" class="nav-text">Dashboard</router-link></span>
-      </a>
+
+      <router-link 
+        to="/dash" 
+        class="nav-link"
+        :class="{ active: $route.path === '/Dash' }"
+      >
+      <span class="nav-icon">🚗</span>
+        <span class="nav-text">Dashboard</span>
+      </router-link>
+
+      <router-link 
+        to="/facturacion" 
+        class="nav-link"
+        :class="{ active: $route.path === '/facturacion' }"
+      >
+      <span class="nav-icon">🧾</span>
+        <span class="nav-text">Facturacion</span>
+      </router-link>
+
+      <router-link 
+        to="/gestion-gastos" 
+        class="nav-link"
+        :class="{ active: $route.path === '/gestion-gastos' }"
+      >
+      <span class="nav-icon">💸</span>
+        <span class="nav-text">Gestion y Gastos</span>
+      </router-link>
+
+
+
       <a href="#servicios" class="nav-link">
         <span class="nav-icon">🛠️</span>
         <span class="nav-text">Servicios</span>
       </a>
-      <a class="nav-link">
-        <span class="nav-icon">👥</span>
-        <span><router-link to="/clientes" class="nav-text">Clientes</router-link></span>
-      </a>
-      <a class="nav-link">
-        <span class="nav-icon">👤</span>
-        <span><router-link to="/registro" class="nav-text">Registro Clientes</router-link></span>
-      </a>
-      <a class="nav-link">
-        <span class="nav-icon">👤</span>
-        <span><router-link to="/regis_empleados" class="nav-text">Registro Empleados</router-link></span>
-      </a>
+
+      <router-link 
+        to="/clientes" 
+        class="nav-link"
+        :class="{ active: $route.path === '/clientes' }"
+      >
+      <span class="nav-icon">👥</span>
+        <span class="nav-text">Clientes</span>
+      </router-link>
+
+
+      <router-link 
+        to="/registro" 
+        class="nav-link"
+        :class="{ active: $route.path === '/registro' }"
+      >
+      <span class="nav-icon">👤</span>
+        <span class="nav-text">Registro Clientes</span>
+      </router-link>
+
+      <router-link 
+        to="/regis_empleados" 
+        class="nav-link"
+        :class="{ active: $route.path === '/regis_empleados' }"
+      >
+      <span class="nav-icon">👤</span>
+        <span class="nav-text">Registro Empleados</span>
+      </router-link>
+      
+        <router-link 
+        to="/registroVehiculo" 
+        class="nav-link"
+        :class="{ active: $route.path === '/registroVehiculo' }"
+      >
+        <span class="nav-icon">🚗</span>
+        <span class="nav-text">Registro de Vehículos</span>
+      </router-link>
+      
+      <router-link 
+        to="/diagnostico" 
+        class="nav-link"
+        :class="{ active: $route.path === '/diagnostico' }"
+      >
+        <span class="nav-icon">🔧</span>
+        <span class="nav-text">Diagnóstico Técnico</span>
+      </router-link>
+
       <a href="#contacto" class="nav-link">
         <span class="nav-icon">📧</span>
         <span class="nav-text">Contacto</span>
       </a>
-      <a class="nav-link">
+
+      <router-link 
+        to="/" 
+        class="nav-link"
+        :class="{ active: $route.path === '/' }"
+      >
         <span class="nav-icon">🚪</span>
-        <span><router-link to="/" class="nav-text">Salir</router-link></span>
-      </a>
+        <span class="nav-text">Salir</span>
+      </router-link>
+  
     </nav>
   </div>
 </template>
