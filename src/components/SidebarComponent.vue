@@ -36,8 +36,16 @@
       <span class="nav-icon">💸</span>
         <span class="nav-text">Gestion y Gastos</span>
       </router-link>
-
-
+      
+      <router-link 
+        to="/flujo-caja" 
+        class="nav-link"
+        :class="{ active: $route.path === '/flujo-caja' }"
+        >
+      <a href="#Flujo de transacciones"></a>
+      <span class="nav-icon"></span>
+      <span class="nav-text">Flujo de transacciones</span>
+</router-link>
 
       <a href="#servicios" class="nav-link">
         <span class="nav-icon">🛠️</span>
@@ -100,6 +108,8 @@
         class="nav-link"
         :class="{ active: $route.path === '/' }"
       >
+
+      
         <span class="nav-icon">🚪</span>
         <span class="nav-text">Salir</span>
       </router-link>
