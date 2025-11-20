@@ -15,7 +15,7 @@ export const vehiculoController = {
                 });
             }
 
-            // Crear vehículo EXACTAMENTE como está en tu BD
+            // Crear vehículo
             const nuevoVehiculo = await Vehiculo.create({
                 matricula,
                 marca,
