@@ -2,7 +2,7 @@
 </script>
 
 <template>
-  <Dash/>
+ 
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo-container">

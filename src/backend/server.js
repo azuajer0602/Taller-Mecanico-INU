@@ -5,8 +5,11 @@ import database from './config/database.js';
 const { sequelize } = database;
 import clientes from './routes/rutas.js';
 import vehiculoRoutes from './routes/vehiculoRoutes.js';
+import transaccionRoutes from './routes/transaccionesroutes.js'; // ← NUEVA IMPORTACIÓN (ruta con el mismo uso de mayúsculas/minúsculas que el archivo)
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
 import morgan from 'morgan';
+import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
+import setupAssociations from './models/AssociationsTransacciones.js'; // ← NUEVA IMPORTACIÓN
 import error from '../red/errors.js';
 
 // ==================== INICIALIZACIÓN ====================
@@ -23,7 +26,9 @@ app.use(morgan('dev'));
 app.use('/api/clientes', clientes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
+app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
+app.use('/api/transacciones', transaccionRoutes); // ← NUEVA RUTA
 
 // ==================== RUTAS GENERALES ====================
 // Health Check
@@ -33,7 +38,8 @@ app.get('/api/health', (req, res) => {
     message: '🚀 API MecanoSoft funcionando correctamente',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    database: 'MySQL + Sequelize'
+    database: 'MySQL + Sequelize',
+     modules: ['Clientes', 'Auth', 'Vehículos', 'Diagnósticos', 'Transacciones'] // ← ACTUALIZADO
   });
 });
 
@@ -74,10 +80,13 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('Conexión a la base de datos establecida correctamente.');
 
+    // Configurar relaciones ANTES de sincronizar
+    console.log('Configurando asociaciones...');
+    setupAssociations();
+    
     await sequelize.sync();
     console.log('Modelos sincronizados.');
 
-    // Iniciar el servidor
     app.listen(PORT, () => {
       console.log(`Servidor Express escuchando en http://localhost:${PORT}`);
     });
@@ -85,7 +94,6 @@ async function startServer() {
     console.error('Error al iniciar el servidor o conectar a la base de datos:', error);
   }
 }
-
 startServer();
 
 export default app;
