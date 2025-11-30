@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import { sequelize } from '../config.js'; // Ajusta la ruta
+import { sequelize } from '../config.js';
 
 const Empleado = sequelize.define('Empleado', {
     id_empleado: {
@@ -7,6 +7,7 @@ const Empleado = sequelize.define('Empleado', {
         primaryKey: true,
         autoIncrement: true,
         allowNull: false,
+        field: 'id_empleado', // ← ESPECIFICAR el nombre de columna exacto
         validate: {
             isInt: {
                 msg: 'El ID debe ser un número entero'
@@ -14,7 +15,7 @@ const Empleado = sequelize.define('Empleado', {
         }
     },
     usuario: {
-        type: DataTypes.STRING(50),
+        type: DataTypes.STRING(30), // ← AJUSTADO a 30 caracteres
         allowNull: false,
         unique: {
             args: true,
@@ -25,34 +26,34 @@ const Empleado = sequelize.define('Empleado', {
                 msg: 'El usuario no puede estar vacío'
             },
             len: {
-                args: [3, 50],
-                msg: 'El usuario debe tener entre 3 y 50 caracteres'
+                args: [3, 30], // ← AJUSTADO a 30 caracteres
+                msg: 'El usuario debe tener entre 3 y 30 caracteres'
             }
         }
     },
     contrasena: {
-        type: DataTypes.STRING(100),
+        type: DataTypes.STRING(45), // ← AJUSTADO a 45 caracteres
         allowNull: false,
         validate: {
             notEmpty: {
                 msg: 'La contraseña no puede estar vacía'
             },
             len: {
-                args: [4, 100],
-                msg: 'La contraseña debe tener entre 4 y 100 caracteres'
+                args: [4, 45], // ← AJUSTADO a 45 caracteres
+                msg: 'La contraseña debe tener entre 4 y 45 caracteres'
             }
         }
     },
     nombre_emp: {
-        type: DataTypes.STRING(100),
+        type: DataTypes.STRING(45), // ← AJUSTADO a 45 caracteres
         allowNull: false,
         validate: {
             notEmpty: {
                 msg: 'El nombre no puede estar vacío'
             },
             len: {
-                args: [2, 100],
-                msg: 'El nombre debe tener entre 2 y 100 caracteres'
+                args: [2, 45], // ← AJUSTADO a 45 caracteres
+                msg: 'El nombre debe tener entre 2 y 45 caracteres'
             },
             is: {
                 args: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/,
@@ -61,15 +62,15 @@ const Empleado = sequelize.define('Empleado', {
         }
     },
     apellido_emp: {
-        type: DataTypes.STRING(100),
+        type: DataTypes.STRING(45), // ← AJUSTADO a 45 caracteres
         allowNull: false,
         validate: {
             notEmpty: {
                 msg: 'El apellido no puede estar vacío'
             },
             len: {
-                args: [2, 100],
-                msg: 'El apellido debe tener entre 2 y 100 caracteres'
+                args: [2, 45], // ← AJUSTADO a 45 caracteres
+                msg: 'El apellido debe tener entre 2 y 45 caracteres'
             },
             is: {
                 args: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/,
@@ -78,7 +79,7 @@ const Empleado = sequelize.define('Empleado', {
         }
     },
     cedula_emp: {
-        type: DataTypes.STRING(20),
+        type: DataTypes.STRING(9), // ← AJUSTADO a 9 caracteres
         allowNull: false,
         unique: {
             args: true,
@@ -89,21 +90,21 @@ const Empleado = sequelize.define('Empleado', {
                 msg: 'La cédula no puede estar vacía'
             },
             len: {
-                args: [5, 20],
-                msg: 'La cédula debe tener entre 5 y 20 caracteres'
+                args: [5, 9], // ← AJUSTADO a 9 caracteres
+                msg: 'La cédula debe tener entre 5 y 9 caracteres'
             }
         }
     },
     cargo: {
-        type: DataTypes.STRING(100),
+        type: DataTypes.STRING(45), // ← AJUSTADO a 45 caracteres
         allowNull: false,
         validate: {
             notEmpty: {
                 msg: 'El cargo no puede estar vacío'
             },
             len: {
-                args: [2, 100],
-                msg: 'El cargo debe tener entre 2 y 100 caracteres'
+                args: [2, 45], // ← AJUSTADO a 45 caracteres
+                msg: 'El cargo debe tener entre 2 y 45 caracteres'
             }
         }
     },
@@ -144,6 +145,8 @@ const Empleado = sequelize.define('Empleado', {
     tableName: 'empleado',
     freezeTableName: true,
     timestamps: false,
+    // ← AGREGAR esta configuración para que Sequelize use id_empleado correctamente
+    underscored: true,
     hooks: {
         beforeValidate: (empleado) => {
             if (empleado.fecha_contratacion) {

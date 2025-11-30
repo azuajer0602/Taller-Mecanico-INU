@@ -24,6 +24,10 @@
             <label for="apellido_emp" class="form-label">Apellido:</label>
             <input type="text" class="form-control" id="apellido_emp" v-model.trim="empleadoLocal.apellido_emp" required />
           </div>
+          <div class="col-md-6">
+            <label for="cedula_emp" class="form-label">Cédula:</label>
+            <input type="text" class="form-control" id="cedula_emp" v-model.trim="empleadoLocal.cedula_emp" required />
+          </div>
 
           <div class="col-md-6">
             <label for="cargo" class="form-label">Cargo:</label>
@@ -34,7 +38,7 @@
             <input type="number" step="0.01" class="form-control" id="sueldo_base" v-model.number="empleadoLocal.sueldo_base" required />
           </div>
 
-          <div class="col-12">
+          <div class="col-6">
             <label for="fecha_contratacion" class="form-label">Fecha Contratación:</label>
             <input type="date" class="form-control" id="fecha_contratacion" v-model="empleadoLocal.fecha_contratacion" required />
           </div>
@@ -63,6 +67,7 @@ const modeloEmpleadoBase = {
   contrasena: '',
   nombre_emp: '',
   apellido_emp: '',
+  cedula_emp: '',
   cargo: '',
   sueldo_base: 0.00,
   fecha_contratacion: new Date().toISOString().substring(0, 10),

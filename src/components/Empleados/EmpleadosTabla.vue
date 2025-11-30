@@ -10,6 +10,7 @@
             <tr style="background-color: #7A8370;"> 
               <th style="color: orange;">Usuario</th> 
               <th style="color: orange;">Nombre Completo</th>
+              <th style="color: orange;">Cédula</th>
               <th style="color: orange;">Cargo</th>
               <th style="color: orange;">Sueldo Base</th>
               <th style="color: orange;">Fecha Contratación</th>
@@ -20,6 +21,7 @@
             <tr v-for="empleado in listaEmpleados" :key="empleado.id_empleado">
               <td>{{ empleado.usuario }}</td>
               <td>{{ empleado.nombre_emp }} {{ empleado.apellido_emp }}</td>
+              <td>{{ empleado.cedula_emp }}</td>
               <td>{{ empleado.cargo }}</td>
               <td>${{ (empleado.sueldo_base * 1000).toLocaleString('es-CL') }}</td> 
               <td>{{ empleado.fecha_contratacion }}</td>

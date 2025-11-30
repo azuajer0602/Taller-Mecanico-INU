@@ -3,49 +3,54 @@ import empleadoController from './controlador.js';
 
 const router = express.Router();
 
-const validarDatosEmpleado = (req, res, next) => {
-    const { sueldo_base, fecha_contratacion } = req.body;
-    
-    if (sueldo_base && isNaN(parseFloat(sueldo_base))) {
-        return res.status(400).json({
-            success: false,
-            message: 'El sueldo base debe ser un número válido'
-        });
-    }
-    
-    if (fecha_contratacion && isNaN(Date.parse(fecha_contratacion))) {
-        return res.status(400).json({
-            success: false,
-            message: 'La fecha de contratación debe tener un formato válido'
-        });
-    }
-    
+console.log('✅ [INICIO] rutas.js cargado - configurando rutas');
+
+// Middleware de debug
+router.use((req, res, next) => {
+    console.log(`📍 [RUTA] ${req.method} ${req.url}`);
     next();
-};
+});
 
-// Rutas para empleados
-router.post('/empleados', validarDatosEmpleado, empleadoController.crearEmpleado);
-router.get('/empleados', empleadoController.obtenerEmpleados);
-router.get('/empleados/:id', empleadoController.obtenerEmpleadoPorId);
-router.put('/empleados/:id', validarDatosEmpleado, empleadoController.actualizarEmpleado);
-router.delete('/empleados/:id', empleadoController.eliminarEmpleado);
-
-// ✅ CORREGIDO: Manejo de rutas no encontradas para empleados
-router.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        message: `Ruta de empleado no encontrada: ${req.method} ${req.originalUrl}`
+// ✅ RUTA DE TEST SIMPLE - SIN CONTROLADOR
+router.get('/test-simple', (req, res) => {
+    console.log('🎯 [TEST SIMPLE] Ruta /test-simple EJECUTADA');
+    res.json({
+        success: true,
+        message: 'Ruta simple funcionando',
+        data: [{ id: 1, nombre: 'Test' }]
     });
 });
 
-// Middleware de manejo de errores para estas rutas
-router.use((error, req, res, next) => {
-    console.error('Error en rutas de empleados:', error);
-    res.status(500).json({
-        success: false,
-        message: 'Error interno del servidor en el módulo de empleados',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
-    });
+// ✅ RUTA CON CONTROLADOR SIMPLIFICADA
+router.get('/lista', (req, res) => {
+    console.log('🎯 [RUTA LISTA] GET /lista - INICIANDO');
+    empleadoController.obtenerEmpleados(req, res);
+});
+
+// ✅✅✅ RUTAS EXPLÍCITAS - SIN CONFLICTOS
+router.get('/lista', (req, res, next) => {
+    console.log('🎯 [RUTA] GET /lista - ejecutando obtenerEmpleados');
+    empleadoController.obtenerEmpleados(req, res).catch(next);
+});
+
+router.post('/nuevo', (req, res, next) => {
+    console.log('🎯 [RUTA] POST /nuevo - ejecutando crearEmpleado');
+    empleadoController.crearEmpleado(req, res).catch(next);
+});
+
+router.get('/ver/:id', (req, res, next) => {
+    console.log(`🎯 [RUTA] GET /ver/${req.params.id} - ejecutando obtenerEmpleadoPorId`);
+    empleadoController.obtenerEmpleadoPorId(req, res).catch(next);
+});
+
+router.put('/editar/:id', (req, res, next) => {
+    console.log(`🎯 [RUTA] PUT /editar/${req.params.id} - ejecutando actualizarEmpleado`);
+    empleadoController.actualizarEmpleado(req, res).catch(next);
+});
+
+router.delete('/eliminar/:id', (req, res, next) => {
+    console.log(`🎯 [RUTA] DELETE /eliminar/${req.params.id} - ejecutando eliminarEmpleado`);
+    empleadoController.eliminarEmpleado(req, res).catch(next);
 });
 
 export { router as empleadosRouter };
