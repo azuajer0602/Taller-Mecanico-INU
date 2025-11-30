@@ -1,6 +1,7 @@
 import express from 'express';
 import respuestas from '../../red/respuestas.js';
-import controlador from '../controllers/clienteController.js';
+import controlador from '../controllers/clienteController.js'; // Necesario para las funciones
+import Cliente from '../models/Cliente.js'; // Importamos el modelo directamente
 
 const router = express.Router();
 
@@ -45,6 +46,8 @@ async function buscarPorCedula(req, res, next) {
       return respuestas.error(req, res, 'Cliente no encontrado', 404);
     }
     
+    // CORRECCIÓN DEFINITIVA: Pasar el objeto 'item' directamente.
+    // El helper 'respuestas.success' ya lo envolverá en un objeto 'data' si es necesario.
     respuestas.success(req, res, item, 200);
   } catch (err) {
     next(err);
@@ -65,15 +68,19 @@ async function uno(req, res, next) {
 
 async function agregar(req, res, next) {
   try {
-    const items = await controlador.agregar(req.body);
-    
-    const message = req.body.id_cliente && req.body.id_cliente !== 0 
-      ? 'Cliente actualizado con éxito' 
-      : 'Cliente creado con éxito';
-    
-    respuestas.success(req, res, { message, data: items }, 201);
+    // Usamos el modelo Cliente directamente para crear el nuevo registro.
+    // El método 'create' de Sequelize ejecutará las validaciones del modelo.
+    const nuevoCliente = await Cliente.create(req.body);
+
+    respuestas.success(req, res, {
+      message: 'Cliente creado con éxito',
+      data: nuevoCliente
+    }, 201);
+
   } catch (err) {
-    if (err.message.includes('registrado') || err.message.includes('requerido') || err.message.includes('validación')) {
+    // Captura errores de validación de Sequelize (ej: cédula/correo duplicado)
+    // y devuelve un error 400 (Bad Request) con el mensaje específico.
+    if (err.name === 'SequelizeUniqueConstraintError' || err.name === 'SequelizeValidationError') {
       return respuestas.error(req, res, err.message, 400);
     }
     next(err);
@@ -82,14 +89,14 @@ async function agregar(req, res, next) {
 
 async function actualizar(req, res, next) {
   try {
-    const items = await controlador.agregar({
-      id_cliente: req.params.id,
-      ...req.body
-    });
+    // CORRECCIÓN: Usar el controlador de 'actualizar' y pasar los parámetros correctamente.
+    const clienteActualizado = await controlador.actualizar(req.params.id, req.body);
     
-    respuestas.success(req, res, { 
-      message: 'Cliente actualizado con éxito', 
-      data: items 
+    // CORRECCIÓN: Devolver el objeto del cliente actualizado directamente,
+    // envuelto en el formato de respuesta estándar.
+    respuestas.success(req, res, {
+      message: 'Cliente actualizado con éxito',
+      data: clienteActualizado
     }, 200);
   } catch (err) {
     if (err.message.includes('no encontrado')) {

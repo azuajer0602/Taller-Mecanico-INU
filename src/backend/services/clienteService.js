@@ -1,4 +1,4 @@
-import models from '../models/Cliente.js';
+import Cliente from '../models/Cliente.js';
 import { Op } from 'sequelize';
 
 class ClienteService {
@@ -14,7 +14,7 @@ class ClienteService {
     const offset = (pagina - 1) * limite;
 
     try {
-      const { count, rows } = await models.Cliente.findAndCountAll({
+      const { count, rows } = await Cliente.findAndCountAll({
         limit: parseInt(limite),
         offset: parseInt(offset),
         order: [[ordenarPor, orden.toUpperCase()]]
@@ -41,7 +41,7 @@ class ClienteService {
     }
 
     try {
-      const cliente = await models.Cliente.findByPk(id);
+      const cliente = await Cliente.findByPk(id);
 
       if (!cliente) {
         throw new Error('Cliente no encontrado');
@@ -66,7 +66,7 @@ class ClienteService {
       data.correo = String(data.correo).trim().toLowerCase();
 
       // Verificar si la cédula ya existe
-      const clientePorCedula = await models.Cliente.findOne({
+      const clientePorCedula = await Cliente.findOne({
         where: { cedula: data.cedula }
       });
 
@@ -75,7 +75,7 @@ class ClienteService {
       }
 
       // Verificar si el correo ya existe
-      const clientePorCorreo = await models.Cliente.findOne({
+      const clientePorCorreo = await Cliente.findOne({
         where: { correo: data.correo }
       });
 
@@ -83,7 +83,7 @@ class ClienteService {
         throw new Error('El correo ya está registrado');
       }
 
-      const cliente = await models.Cliente.create(data);
+      const cliente = await Cliente.create(data);
       return cliente;
 
     } catch (error) {
@@ -102,8 +102,8 @@ class ClienteService {
     }
 
     try {
-      const cliente = await models.Cliente.findByPk(id);
-      
+      const cliente = await Cliente.findByPk(id);
+
       if (!cliente) {
         throw new Error('Cliente no encontrado');
       }
@@ -123,8 +123,8 @@ class ClienteService {
 
       // Si se intenta cambiar la cédula, verificar que no exista en OTRO cliente
       if (data.cedula && data.cedula !== cliente.cedula) {
-        const cedulaExistente = await models.Cliente.findOne({
-          where: { 
+        const cedulaExistente = await Cliente.findOne({
+          where: {
             cedula: data.cedula,
             id_cliente: { [Op.ne]: id } // EXCLUIR el cliente actual
           }
@@ -139,8 +139,8 @@ class ClienteService {
 
       // Si se intenta cambiar el correo, verificar que no exista en OTRO cliente
       if (data.correo && data.correo !== cliente.correo) {
-        const correoExistente = await models.Cliente.findOne({
-          where: { 
+        const correoExistente = await Cliente.findOne({
+          where: {
             correo: data.correo,
             id_cliente: { [Op.ne]: id } // EXCLUIR el cliente actual
           }
@@ -174,8 +174,8 @@ class ClienteService {
     }
 
     try {
-      const cliente = await models.Cliente.findByPk(id);
-      
+      const cliente = await Cliente.findByPk(id);
+
       if (!cliente) {
         throw new Error('Cliente no encontrado');
       }
@@ -193,7 +193,7 @@ class ClienteService {
     const { limite = 10 } = opciones;
 
     try {
-      const clientes = await models.Cliente.findAll({
+      const clientes = await Cliente.findAll({
         where: {
           [Op.or]: [
             { nombre: { [Op.like]: `%${termino}%` } },
@@ -214,8 +214,10 @@ class ClienteService {
   // Buscar por cédula exacta
   async buscarPorCedula(cedula) {
     try {
-      const cliente = await models.Cliente.findOne({
-        where: { cedula: String(cedula).trim() }
+      // Normalizar cédula: quitar espacios y ceros iniciales
+      const cedulaNormalizada = String(cedula).trim().replace(/^0+/, '');
+      const cliente = await Cliente.findOne({
+        where: { cedula: cedulaNormalizada }
       });
 
       return cliente;

@@ -1,5 +1,5 @@
-import { Vehiculo } from '../models/Vehiculo.js';
-import { Diagnostico } from '../models/Diagnostico.js';
+import Vehiculo from '../models/Vehiculo.js';
+import Diagnostico from '../models/Diagnostico.js';
 
 export const vehiculoController = {
     // CREATE - Crear nuevo vehículo

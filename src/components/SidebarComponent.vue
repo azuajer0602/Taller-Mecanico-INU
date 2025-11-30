@@ -10,10 +10,10 @@
     </div>
     <nav class="sidebar-nav">
 
-      <router-link 
-        to="/dash" 
+      <router-link
+        to="/dash"
         class="nav-link"
-        :class="{ active: $route.path === '/Dash' }"
+        :class="{ active: $route.path === '/dash' }"
       >
       <span class="nav-icon">🚗</span>
         <span class="nav-text">Dashboard</span>

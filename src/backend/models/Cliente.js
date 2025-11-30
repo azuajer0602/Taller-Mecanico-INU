@@ -71,18 +71,12 @@ const Cliente = sequelize.define('Cliente', {
     type: DataTypes.STRING(20),
     allowNull: true,
     validate: {
-      len: {
-        args: [8, 20],
-        msg: 'El teléfono debe tener entre 8 y 20 caracteres'
-      },
+      // SOLUCIÓN: Simplificamos la validación.
+      // 'len' se encarga de la longitud si el campo no está vacío.
+      len: { args: [8, 20], msg: 'El teléfono debe tener entre 8 y 20 caracteres' },
       isNumericOrEmpty(value) {
-        if (value) {
-          if (!/^\d+$/.test(value)) {
-            throw new Error('El teléfono solo puede contener dígitos');
-          }
-          if (value.length < 8 || value.length > 20) {
-            throw new Error('El teléfono debe tener entre 8 y 20 caracteres');
-          }
+        if (value && !/^\d+$/.test(value)) {
+          throw new Error('El teléfono solo puede contener dígitos');
         }
       }
     }
@@ -92,13 +86,4 @@ const Cliente = sequelize.define('Cliente', {
   timestamps: false,
 });
 
-// ⚠️ ELIMINA esta función - la conexión ya se maneja en database.js
-// async function conectarDB() { ... }
-// conectarDB();
-
-const models = {
-  Cliente
-  // ⚠️ NO exportes sequelize aquí
-};
-
-export default models;
+export default Cliente;

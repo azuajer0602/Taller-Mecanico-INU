@@ -1,5 +1,5 @@
-import { Diagnostico } from '../models/Diagnostico.js';
-import { Vehiculo } from '../models/Vehiculo.js';
+import Diagnostico from '../models/Diagnostico.js';
+import Vehiculo from '../models/Vehiculo.js';
 
 export const diagnosticoController = {
     // CREATE - Crear nuevo diagnóstico
