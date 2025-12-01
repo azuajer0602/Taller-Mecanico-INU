@@ -4,7 +4,8 @@ import {
     login, 
     register, 
     deleteEmpleado, 
-    updateEmpleado 
+    updateEmpleado, 
+    obtenerTodos
 } from '../controllers/empController.js';
 
 const router = Router();
@@ -13,5 +14,6 @@ router.post('/login', login);
 router.post('/register', register);
 router.delete('/delete', deleteEmpleado);
 router.put('/update', updateEmpleado);
+router.get('/obtener', obtenerTodos);
 
 export default router;

@@ -31,10 +31,14 @@ const Vehiculo = sequelize.define('Vehiculo', {
     field: 'color'
   },
   id_cliente: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'id_cliente'
-  }
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'id_cliente',
+        references: {
+        model: 'cliente',  // ✅ Referencia explícita
+        key: 'id_cliente'
+    }
+    }
 }, {
   tableName: 'vehiculo',
   timestamps: false

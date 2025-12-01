@@ -77,7 +77,7 @@
         :class="{ active: $route.path === '/regis_empleados' }"
       >
       <span class="nav-icon">👤</span>
-        <span class="nav-text">Registro Empleados</span>
+        <span class="nav-text">Empleados</span>
       </router-link>
       
         <router-link 
@@ -87,6 +87,24 @@
       >
         <span class="nav-icon">🚗</span>
         <span class="nav-text">Registro de Vehículos</span>
+      </router-link>
+
+      <router-link 
+        to="/proveedores" 
+        class="nav-link"
+        :class="{ active: $route.path === '/proveedores' }"
+      >
+        <span class="nav-icon">🚗</span>
+        <span class="nav-text">proveedores</span>
+      </router-link>
+
+      <router-link 
+        to="/repuestos" 
+        class="nav-link"
+        :class="{ active: $route.path === '/repuestos' }"
+      >
+        <span class="nav-icon">🛠️</span>
+        <span class="nav-text">Repuestos</span>
       </router-link>
       
       <router-link 
