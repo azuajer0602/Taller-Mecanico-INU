@@ -9,7 +9,8 @@ import vehiculoRoutes from './routes/vehiculoRoutes.js';
 import transaccionRoutes from './routes/transaccionesroutes.js';
 import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
-import facturaRoutes from './routes/facturaRoutes.js'; // ¡NUEVA RUTA PARA FACTURAS!
+import facturaRoutes from './routes/facturaRoutes.js';
+import proveedoresRoutes from './routes/proveedoresRoutes.js'; // ¡NUEVA RUTA PARA FACTURAS!
 
 // Configuración de Base de Datos
 import database from './config/database.js';
@@ -33,6 +34,7 @@ app.use(morgan('dev'));
 
 // ==================== RUTAS DE LA API ====================
 app.use('/api/auth', authRoutes);
+app.use('/api/proveedores', proveedoresRoutes)
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/tipos-transaccion', tipoTransaccionRoutes);

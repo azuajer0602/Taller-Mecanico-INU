@@ -31,7 +31,6 @@ const Proveedor = sequelize.define('Proveedor', {
 
   tableName: 'proveedor', 
   freezeTableName: true, 
-
   timestamps: false,
   
 
