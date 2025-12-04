@@ -10,16 +10,22 @@ const tiposDeOperacion = ref([]);
 const filtroBusqueda = ref('');
 let modalInstancia = null;
 
-// Modelo del formulario
+// Función auxiliar para obtener fecha local en formato YYYY-MM-DD
+const obtenerFechaLocal = () => {
+  const fecha = new Date();
+  const offset = fecha.getTimezoneOffset() * 60000; // Obtener diferencia horaria en milisegundos
+  return new Date(fecha - offset).toISOString().split('T')[0];
+};
+
+//modelo del formulario
 const nuevaOperacion = ref({
   descripcion: '',
   monto: '',
-  fecha: new Date().toISOString().split('T')[0],
-  fechaVencimiento: '', // NUEVO CAMPO
+  fecha: obtenerFechaLocal(), // <--- CORREGIDO AQUÍ
+  fechaVencimiento: '', 
   id_tipo_transaccion: '', 
   metodoPago: 'Bolívares'
 });
-
 const metodosPago = ['Bolívares', 'Divisas', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
 
 // --- COMPUTED: DETECCIÓN AUTOMÁTICA DE TIPO DE CUENTA ---

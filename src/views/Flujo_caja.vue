@@ -152,8 +152,11 @@ const cargarDatos = async () => {
 
         return {
           id: t.id_transaccion,
-          fecha: t.fecha_asiento,
-          descripcion: obtenerDescripcionInteligente(t),
+       fecha: t.fecha_asiento 
+             ? t.fecha_asiento.split('T')[0].split('-').reverse().join('/') 
+             : 'N/A', 
+      
+      descripcion: obtenerDescripcionInteligente(t),
           tipo: tipoLogico, 
           categoria: determinarCategoria(t),
           monto: calcularMontoTransaccion(t.detalles),
@@ -180,7 +183,7 @@ const cargarDatos = async () => {
 // Lógica de métricas DEBE vs HABER
 const cargarMetricas = async (data) => {
   const hoy = new Date()
-  const mesActual = hoy.getMonth()
+  const mesActual = hoy.getMonth() // 0 = Enero, 11 = Diciembre
   const yearActual = hoy.getFullYear()
 
   // Reset
@@ -188,9 +191,21 @@ const cargarMetricas = async (data) => {
   metrics.value.haberMes = 0
 
   data.forEach(t => {
-    const d = new Date(t.fecha_asiento);
-    // Filtrar mes actual
-    if (d.getMonth() === mesActual && d.getFullYear() === yearActual) {
+    if (!t.fecha_asiento) return;
+
+    // --- CORRECCIÓN DE ZONA HORARIA ---
+    // En lugar de new Date(), leemos el string directo "YYYY-MM-DD"
+    // t.fecha_asiento viene como "2025-12-01" o "2025-12-01T00:00:00.000Z"
+    
+    // 1. Nos aseguramos de tener solo la parte de la fecha YYYY-MM-DD
+    const fechaStr = t.fecha_asiento.split('T')[0]; 
+    const partes = fechaStr.split('-'); // ["2025", "12", "01"]
+    
+    const yearTrx = parseInt(partes[0]);
+    const mesTrx = parseInt(partes[1]) - 1; // Restamos 1 porque en JS los meses van de 0 a 11
+
+    // Filtrar mes actual comparando números enteros (sin horas ni timezones)
+    if (mesTrx === mesActual && yearTrx === yearActual) {
       // Sumar detalles
       if (t.detalles) {
         t.detalles.forEach(detalle => {
@@ -201,15 +216,17 @@ const cargarMetricas = async (data) => {
     }
   });
 
-  // Balance de comprobación (Debe - Haber). Debería ser 0.
+  // Balance y conteo
   metrics.value.balanceMes = metrics.value.debeMes - metrics.value.haberMes;
   
   metrics.value.transaccionesMes = data.filter(t => {
-     const d = new Date(t.fecha_asiento);
-     return d.getMonth() === mesActual && d.getFullYear() === yearActual;
+    const fechaStr = t.fecha_asiento.split('T')[0];
+    const partes = fechaStr.split('-');
+    const yearTrx = parseInt(partes[0]);
+    const mesTrx = parseInt(partes[1]) - 1;
+    return mesTrx === mesActual && yearTrx === yearActual;
   }).length;
 }
-
 // Carga cuentas por cobrar/pagar usando las banderas de la BD
 const cargarCuentasPorCobrarPagar = async (data) => {
   cuentasPorCobrar.value = [];
@@ -247,38 +264,54 @@ const crearObjetoCuenta = (detalle, transaccion, tipoEntidad) => {
   }
 }
 
-// --- VARIABLES GLOBALES PARA GRÁFICOS ---
+// --- VARIABLES GLOBALES PARA GRÁFICOS ---a
 let chartFlujo = null
 let chartCategorias = null
 
 // --- 1. PROCESAMIENTO DE DATOS PARA GRÁFICOS ---
 
 const obtenerDatosGraficos = () => {
-  const data = transaccionesRecientes.value || [] // Usamos la data que ya cargamos
+  const data = transaccionesRecientes.value || [] 
   
   // A) PREPARAR DATOS LINEAL (Últimos 6 meses)
   const meses = {}
   const hoy = new Date()
   
-  // Inicializar últimos 6 meses vacíos
+  // Inicializar últimos 6 meses vacíos (usando claves "2025-11", "2025-10", etc)
   for (let i = 5; i >= 0; i--) {
+    // Creamos una fecha temporal restando meses
     const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1)
-    const key = `${d.getFullYear()}-${d.getMonth()}` // Clave única
-    const label = d.toLocaleDateString('es-ES', { month: 'short' })
+    
+    // Clave única: Año-MesIndex (Ej: 2025-11 para Diciembre)
+    const key = `${d.getFullYear()}-${d.getMonth()}` 
+    
+    // Etiqueta visual: "dic"
+    const label = d.toLocaleDateString('es-VE', { month: 'short' })
     meses[key] = { label, debe: 0, haber: 0 }
   }
 
   // Llenar con datos reales
   data.forEach(t => {
-    const d = new Date(t.fecha) // o t.fecha_asiento
-    const key = `${d.getFullYear()}-${d.getMonth()}`
+    // ERROR ANTERIOR: const d = new Date(t.fecha) <-- Esto fallaba con "01/12/2025"
     
-    if (meses[key]) {
-      // Sumar detalles
-      t.detalles.forEach(det => {
-        meses[key].debe += parseFloat(det.debe || 0)
-        meses[key].haber += parseFloat(det.haber || 0)
-      })
+    // NUEVA LÓGICA: Leemos el string "01/12/2025" manualmente
+    if (t.fecha && typeof t.fecha === 'string' && t.fecha.includes('/')) {
+        const partes = t.fecha.split('/'); // ["01", "12", "2025"]
+        
+        if (partes.length === 3) {
+            const anio = parseInt(partes[2]);
+            const mesIndex = parseInt(partes[1]) - 1; // Restamos 1 (Enero es 0)
+            
+            const key = `${anio}-${mesIndex}`;
+
+            // Si esta fecha está dentro de los últimos 6 meses que generamos arriba...
+            if (meses[key]) {
+                t.detalles.forEach(det => {
+                    meses[key].debe += parseFloat(det.debe || 0)
+                    meses[key].haber += parseFloat(det.haber || 0)
+                })
+            }
+        }
     }
   })
 
@@ -287,11 +320,11 @@ const obtenerDatosGraficos = () => {
   const dataHaber = Object.values(meses).map(m => m.haber)
 
   // B) PREPARAR DATOS DONA (Por Categoría)
+  // (Esta parte estaba bien, se mantiene igual)
   const categorias = {}
   data.forEach(t => {
-    const cat = t.categoria || 'General' // Usamos la categoría que calculamos antes
+    const cat = t.categoria || 'General'
     if (!categorias[cat]) categorias[cat] = 0
-    // Sumamos el volumen de la transacción (Debe)
     categorias[cat] += t.monto 
   })
 
