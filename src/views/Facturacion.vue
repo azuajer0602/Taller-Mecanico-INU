@@ -30,7 +30,7 @@
         </div>
 
         <div class="card-body">
-          <form @submit.prevent="generarPDF" class="factura-form">
+          <form @submit.prevent="guardarFactura" class="factura-form">
             <!-- DATOS DEL CLIENTE -->
             <div class="form-section border-start border-4 border-success ps-3 mb-4">
               <h3 class="h5">Datos del Cliente</h3>
@@ -41,7 +41,9 @@
                     :id="key"
                     v-model="cliente[key]"
                     :type="campo.type"
+                    @blur="key === 'cedula' && buscarClientePorCedula()"
                     class="form-control"
+                    :readonly="key !== 'cedula' && clienteEncontrado"
                   />
                 </div>
               </div>
@@ -112,7 +114,7 @@
                   <i class="bi bi-clock-history me-2"></i>Ver Historial
                 </button>
                 <button type="submit" class="btn btn-primary btn-lg">
-                  <i class="bi bi-file-earmark-pdf-fill me-2"></i>Generar Factura
+                  <i class="bi bi-save-fill me-2"></i>Guardar Factura
                 </button>
               </div>
             </div>
@@ -125,15 +127,21 @@
 
 <script setup>
 import Side from '../components/SidebarComponent.vue';
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { ref, computed, onMounted } from "vue";
-import HistorialFacturas from './HistorialFacturas.vue'; 
-import logoUrl from '../assets/logo.png';
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { useRouter, useRoute } from 'vue-router';
+import HistorialFacturas from './HistorialFacturas.vue';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
+const router = useRouter();
+const route = useRoute();
 const historialComponent = ref(null);
+const API_BASE = 'http://localhost:3000/api';
+const facturas = ref([]);
+const loadingFacturas = ref(false);
 
 const cliente = ref({
+  id_cliente: null, // Guardaremos el ID del cliente si lo encontramos
   nombre: "",
   apellido: "",
   cedula: "",
@@ -141,6 +149,8 @@ const cliente = ref({
   direccion: "",
   telefono: "",
 });
+
+const clienteEncontrado = ref(false);
 
 const camposCliente = {
   nombre: { label: "Nombre", type: "text" },
@@ -162,175 +172,309 @@ const productos = ref([{ descripcion: "", cantidad: 1, precio: 0 }]);
 const agregarProducto = () => productos.value.push({ descripcion: "", cantidad: 1, precio: 0 });
 const eliminarProducto = (index) => productos.value.splice(index, 1);
 
-const subtotalProducto = (p) => (p.cantidad * p.precio).toFixed(2) + " " + monedaSimbolo.value;
+const subtotalProducto = (p) => {
+  const cantidad = Number(p.cantidad) || 0;
+  const precio = Number(p.precio) || 0;
+  const subtotal = cantidad * precio;
+  return subtotal.toFixed(2) + " " + monedaSimbolo.value;
+};
 
 const totalFactura = computed(() => productos.value.reduce((acc, p) => acc + p.cantidad * p.precio, 0));
 const monedaSimbolo = computed(() => (pago.value.metodoPago === 'Divisas' ? '$' : 'Bs'));
 
-const toBase64 = url => fetch(url)
-  .then(response => response.blob())
-  .then(blob => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  }));
+const getMoneda = (factura) => factura.metodoPago === 'Divisas' ? '$' : 'Bs';
 
-const guardarFacturaLocalmente = (factura) => {
+const getEstadoClass = (estado) => {
+  switch (estado) {
+    case 'Pagado': return 'bg-success';
+    case 'Pendiente': return 'bg-warning text-dark';
+    case 'Anulada': return 'bg-danger';
+    default: return 'bg-secondary';
+  }
+};
+
+const buscarClientePorCedula = async () => {
+  if (!cliente.value.cedula) return;
+
+  // Normalizar la cédula: quitar espacios en blanco y ceros iniciales
+  const cedulaLimpia = String(cliente.value.cedula).trim().replace(/^0+/, '');
+  cliente.value.cedula = cedulaLimpia;
+
   try {
-    const facturasGuardadas = JSON.parse(localStorage.getItem('facturas') || '[]');
-    facturasGuardadas.push(factura);
-    localStorage.setItem('facturas', JSON.stringify(facturasGuardadas));
+    const response = await fetch(`${API_BASE}/clientes/cedula/${cedulaLimpia}`);
+    const data = await response.json();
+
+    // Si la respuesta es exitosa y contiene datos (cliente encontrado)
+    if (data.success && data.data) { // El helper de respuestas ahora asegura que el cliente esté en 'data'
+      const clienteExistente = data.data;
+      cliente.value.id_cliente = clienteExistente.id_cliente;
+      cliente.value.nombre = clienteExistente.nombre;
+      cliente.value.apellido = clienteExistente.apellido;
+      cliente.value.correo = clienteExistente.correo; // Corregido de 'email' a 'correo'
+      cliente.value.direccion = clienteExistente.direccion;
+      cliente.value.telefono = clienteExistente.telefono;
+      clienteEncontrado.value = true;
+      alert('Cliente encontrado. Los datos han sido autocompletados.');
+    } else { // Cliente no encontrado
+      clienteEncontrado.value = false;
+      cliente.value.id_cliente = null;
+      if (confirm(`El cliente con cédula ${cedulaLimpia} no está registrado. ¿Desea registrarlo ahora?`)) {
+        router.push({
+          path: '/registro',
+          query: { cedula: cedulaLimpia }
+        });
+      }
+    }
   } catch (error) {
-    console.error("Error al guardar la factura en localStorage:", error);
-    alert("No se pudo guardar la factura localmente.");
+    console.error("Error buscando cliente:", error);
+    alert("Hubo un error al conectar con el servidor para buscar el cliente.");
   }
 };
 
 const limpiarFormulario = () => {
-  cliente.value = { nombre: "", apellido: "", cedula: "", correo: "", direccion: "", telefono: "" };
+  cliente.value = { id_cliente: null, nombre: "", apellido: "", cedula: "", correo: "", direccion: "", telefono: "" };
   pago.value = {
     fechaPago: new Date().toISOString().split("T")[0],
     estado: "Pagado",
     metodoPago: "Divisas",
   };
   productos.value = [{ descripcion: "", cantidad: 1, precio: 0 }];
+  clienteEncontrado.value = false;
 };
 
 const abrirHistorial = () => {
-  // Nos aseguramos de que el historial cargue los datos más recientes al abrir la modal
   if (historialComponent.value) {
     historialComponent.value.fetchFacturas();
   }
 }
 
-const generarPDF = async () => {
-  if (!cliente.value.nombre || !cliente.value.apellido) {
-    alert("Debe completar al menos el nombre y apellido del cliente.");
+const generarPDF = async (facturaId) => {
+  try {
+    console.log('Generando PDF para factura ID:', facturaId);
+
+    // Obtener la factura específica por su ID
+    const response = await fetch(`${API_BASE}/facturas/${facturaId}`);
+    console.log('Respuesta del fetch:', response.status);
+
+    const data = await response.json();
+    console.log('Datos recibidos:', data);
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status} - ${data.message || 'No se pudo obtener la factura'}`);
+    }
+
+    if (!data.success) {
+      throw new Error(data.message || 'Error en la respuesta de la API');
+    }
+
+    const factura = data.data;
+    console.log('Factura obtenida:', factura);
+
+    // --- INICIO DEL NUEVO DISEÑO DE PDF ---
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 15;
+    let yPosition = margin;
+
+    // 1. Encabezado con Logo
+    try {
+      const logoImg = new Image();
+      logoImg.src = '/logo.png'; // Asegúrate de que tu logo esté en la carpeta `public`
+      pdf.addImage(logoImg, 'PNG', margin, yPosition, 30, 30);
+    } catch (error) {
+      console.warn("Logo no encontrado en /logo.png, continuando sin él.");
+    }
+
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('MECANOSOFT', pageWidth - margin, yPosition, { align: 'right' });
+    pdf.text('Servicio de Reparación de Vehículos', pageWidth - margin, yPosition + 6, { align: 'right' });
+    yPosition += 35;
+
+    // 2. Título y Detalles de la Factura
+    pdf.setFontSize(22);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(44, 62, 80); // Color oscuro
+    pdf.text('FACTURA', margin, yPosition);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100);
+    pdf.text(`Nº Factura: ${factura.id}`, pageWidth - margin, yPosition - 5, { align: 'right' });
+    pdf.text(`Fecha: ${new Date(factura.fechaPago).toLocaleDateString()}`, pageWidth - margin, yPosition, { align: 'right' });
+    yPosition += 15;
+
+    // 3. Datos del Cliente
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(44, 62, 80);
+    pdf.text('Facturar a:', margin, yPosition);
+    yPosition += 10;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(0);
+    pdf.text(`${factura.Cliente.nombre} ${factura.Cliente.apellido}`, margin, yPosition);
+    pdf.text(`C.I: ${factura.Cliente.cedula}`, margin, yPosition + 5);
+    pdf.text(`Email: ${factura.Cliente.correo}`, margin, yPosition + 10);
+    pdf.text(`Teléfono: ${factura.Cliente.telefono}`, margin, yPosition + 15);
+
+    // 4. Tabla de Items con autoTable
+    const monedaSimbolo = factura.metodoPago === 'Divisas' ? '$' : 'Bs';
+    const tableBody = factura.ItemFacturas.map(item => [
+      item.descripcion,
+      item.cantidad,
+      `${monedaSimbolo} ${parseFloat(item.precio).toFixed(2)}`,
+      `${monedaSimbolo} ${(item.cantidad * item.precio).toFixed(2)}`
+    ]);
+
+    autoTable(pdf, {
+      startY: yPosition + 25,
+      head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Subtotal']],
+      body: tableBody,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [44, 62, 80], // Color oscuro para encabezado
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      styles: {
+        fontSize: 10
+      },
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'right' },
+        3: { halign: 'right' }
+      }
+    });
+
+    yPosition = pdf.lastAutoTable.finalY + 15;
+
+    // 5. Total y Pie de Página
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`TOTAL: ${monedaSimbolo} ${parseFloat(factura.total).toFixed(2)}`, pageWidth - margin, yPosition, { align: 'right' });
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(150);
+    pdf.text(`Método de Pago: ${factura.metodoPago}`, margin, yPosition);
+    pdf.text(`Estado: ${factura.estado}`, margin, yPosition + 5);
+
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    pdf.setFontSize(10);
+    pdf.setTextColor(100);
+    pdf.text('¡Gracias por su confianza!', pageWidth / 2, pageHeight - 15, { align: 'center' });
+
+    // --- FIN DEL NUEVO DISEÑO DE PDF ---
+
+    pdf.save(`Factura_${factura.id}_${factura.Cliente.nombre}_${factura.Cliente.apellido}.pdf`);
+
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    alert(`Error al generar el PDF de la factura: ${error.message}`);
+  }
+};
+
+const guardarFactura = async () => {
+  if (!cliente.value.nombre || !cliente.value.apellido || !cliente.value.cedula) {
+    alert("Los datos del cliente (nombre, apellido, cédula) son obligatorios.");
     return;
   }
 
   if (productos.value.length === 0 || productos.value.some(p => !p.descripcion || !p.precio || p.precio <= 0)) {
-    alert("Debe agregar al menos un producto válido con descripción y precio.");
+    alert("Debe agregar al menos un producto válido con descripción y precio mayor a cero.");
     return;
   }
 
   try {
-    // Guardar factura en localStorage
-    const nuevaFactura = {
-      id: Date.now(), // ID único simple
-      fechaPago: pago.value.fechaPago,
-      total: totalFactura.value,
-      estado: pago.value.estado,
-      metodoPago: pago.value.metodoPago,
-      Cliente: { ...cliente.value },
-      ItemFacturas: productos.value.map(p => ({ ...p })),
+    const payload = {
+      cliente: { ...cliente.value },
+      factura: {
+        fechaPago: pago.value.fechaPago,
+        total: totalFactura.value,
+        estado: pago.value.estado,
+        metodoPago: pago.value.metodoPago,
+      },
+      items: productos.value.map(p => ({ ...p })),
     };
-    guardarFacturaLocalmente(nuevaFactura);
 
-    // Generación del PDF (sin cambios en esta parte)
-    const doc = new jsPDF();
+    const response = await fetch(`${API_BASE}/facturas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
-    try {
-      const base64Logo = await toBase64(logoUrl);
-      doc.addImage(base64Logo, 'PNG', 15, 15, 40, 16);
-    } catch (error) {
-      console.error("No se pudo cargar el logo. Se generará la factura sin él.", error);
+    const data = await response.json();
+
+    if (!data.success) {
+        throw new Error(data.message || 'Error en la respuesta de la API');
     }
 
-    doc.setFontSize(18);
-    doc.text("Factura de Venta", 105, 25, { align: "center" });
-    doc.line(15, 35, 195, 35);
+    // CORRECCIÓN: El ID de la factura viene dentro de data.data
+    const nuevaFacturaId = data.data.id;
+    alert(`Factura #${nuevaFacturaId} guardada exitosamente en la base de datos.`);
 
-    let finalY = 45;
-    autoTable(doc, {
-      startY: finalY,
-      body: [
-        [{ content: "DATOS DEL CLIENTE", colSpan: 2, styles: { fontStyle: 'bold', fillColor: [230, 230, 230] } }],
-        ["Nombre y Apellido:", `${cliente.value.nombre} ${cliente.value.apellido}`],
-        ["Cédula:", cliente.value.cedula],
-        ["Correo:", cliente.value.correo],
-        ["Teléfono:", cliente.value.telefono],
-        ["Dirección:", cliente.value.direccion],
-      ],
-      theme: "plain",
-      margin: { left: 15 },
-      styles: { cellPadding: 2, fontSize: 10 },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
-      didDrawPage: (data) => (finalY = data.cursor.y),
-    });
+    // Generar PDF automáticamente después de guardar
+    await generarPDF(nuevaFacturaId);
 
-    autoTable(doc, {
-      startY: finalY + 5,
-      body: [
-        [{ content: "DETALLES DEL PAGO", colSpan: 2, styles: { fontStyle: 'bold', fillColor: [230, 230, 230] } }],
-        ["Fecha de Pago:", pago.value.fechaPago],
-        ["Estado:", pago.value.estado],
-        ["Método de Pago:", pago.value.metodoPago],
-      ],
-      theme: "plain",
-      margin: { left: 15 },
-      styles: { cellPadding: 2, fontSize: 10 },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
-      didDrawPage: (data) => (finalY = data.cursor.y),
-    });
-
-    const head = [["Descripción", "Cantidad", "Precio Unitario", "Subtotal"]];
-    const body = productos.value.map((p) => [
-      p.descripcion,
-      String(p.cantidad),
-      `${p.precio.toFixed(2)} ${monedaSimbolo.value}`,
-      `${(p.precio * p.cantidad).toFixed(2)} ${monedaSimbolo.value}`,
-    ]);
-    autoTable(doc, {
-      startY: finalY + 10,
-      head,
-      body,
-      theme: "grid",
-      margin: { left: 15, right: 15 },
-      headStyles: { fillColor: [31, 81, 63], textColor: 255 },
-      styles: { cellPadding: 2, fontSize: 10 },
-      columnStyles: { 1: { cellWidth: 20, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' }, 3: { cellWidth: 35, halign: 'right' } },
-      didDrawPage: (data) => (finalY = data.cursor.y),
-    });
-
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL: ${totalFactura.value.toFixed(2)} ${monedaSimbolo.value}`, 195, finalY + 10, { align: "right" });
-
-    const nombreArchivo = `Factura_${cliente.value.nombre.replace(/\s+/g, "_")}_${cliente.value.apellido}.pdf`;
-    doc.save(nombreArchivo);
-
-    alert('Factura generada y guardada en el historial local.');
     limpiarFormulario();
 
-    // Actualiza el historial si la modal está abierta o se abre después
-    if (historialComponent.value) {
-      historialComponent.value.fetchFacturas();
+  } catch (error) {
+    console.error("Error al guardar la factura:", error);
+    alert(`Error al guardar la factura: ${error.message}`);
+  }
+};
+
+const cargarFacturas = async () => {
+  loadingFacturas.value = true;
+  try {
+    const response = await fetch(`${API_BASE}/facturas`);
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.success) {
+      facturas.value = data.data.slice(0, 10); // Mostrar las últimas 10 facturas
+    } else {
+      throw new Error(data.message || 'La API devolvió un error');
     }
   } catch (error) {
-    console.error("Error al generar PDF:", error);
-    alert("Error al generar el PDF. Verifica la consola para más detalles.");
+    console.error("Error al cargar facturas:", error);
+    alert("No se pudieron cargar las facturas. Revise la conexión con el servidor.");
+  } finally {
+    loadingFacturas.value = false;
   }
 };
 
 onMounted(() => {
-  // Cargar Bootstrap Icons CSS
-  if (!document.querySelector('link[href*="bootstrap-icons"]')) {
-    const bsIconsLink = document.createElement('link');
-    bsIconsLink.rel = 'stylesheet';
-    bsIconsLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css';
-    document.head.appendChild(bsIconsLink);
+  cargarFacturas();
+  // Si se pasa una cédula desde la URL (después de registrar cliente), buscar automáticamente
+  if (route.query.cedula) {
+    cliente.value.cedula = route.query.cedula;
+    buscarClientePorCedula();
   }
+});
 
-  // Cargar Bootstrap JS
-  if (!document.querySelector('script[src*="bootstrap.bundle.min.js"]')) {
-    const bsScript = document.createElement('script');
-    bsScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js';
-    bsScript.integrity = 'sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p';
-    bsScript.crossOrigin = 'anonymous';
-    document.body.appendChild(bsScript);
-  }
+// Limpiar estado al desmontar el componente para evitar problemas de navegación
+onBeforeUnmount(() => {
+  // Limpiar refs para evitar estado persistente
+  cliente.value = {
+    id_cliente: null,
+    nombre: "",
+    apellido: "",
+    cedula: "",
+    correo: "",
+    direccion: "",
+    telefono: "",
+  };
+  pago.value = {
+    fechaPago: new Date().toISOString().split("T")[0],
+    estado: "Pagado",
+    metodoPago: "Divisas",
+  };
+  productos.value = [{ descripcion: "", cantidad: 1, precio: 0 }];
+  clienteEncontrado.value = false;
+  facturas.value = [];
+  loadingFacturas.value = false;
 });
 </script>
 

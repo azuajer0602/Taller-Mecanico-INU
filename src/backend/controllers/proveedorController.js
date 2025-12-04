@@ -8,6 +8,27 @@ const isNumeric = (value) => {
 };
 
 
+//obtener todos los proveedores
+export const obtenerProveedores = async (req , res) => {
+    try {
+        const proveedores = await Proveedor.findAll({
+            attributes: { exclude: [''] } 
+        });
+
+        if (proveedores.length === 0) {
+            return res.status(404).json({ message: 'No hay Proveedores registrados.' });
+        }
+
+        res.status(200).json({
+            message: 'Lista de Proveedores obtenida exitosamente.',
+            proveedores: proveedores
+        });
+
+    } catch (error) {
+        console.error('Error al obtener todos los Proveedores:', error);
+        res.status(500).json({ message: 'Error del servidor al obtener Proveedores.' });
+    }
+};
 //modulo de registro
 export const proveedorRegistro = async (req, res) => {
     
@@ -34,18 +55,18 @@ export const proveedorRegistro = async (req, res) => {
 
 
         const newProveedor = await Proveedor.create({ 
-            id_proveedor: id, 
-            nombre_fiscal: nombre,
-            rif_juridico: rif,
-            telefono_proveedor: telefono,
-            direccion_proveedor: direccion
+            id_proveedor: id_proveedor, 
+            nombre_fiscal: nombre_fiscal, 
+            rif_juridico: rif_juridico, 
+            telefono_proveedor: telefono_proveedor, 
+            direccion_proveedor: direccion_proveedor
         });
 
         res.status(201).json({ 
             message: 'Proveedor registrado exitosamente', 
             proveedor: { 
-                id: newProveedor.id_proveedor, 
-                nombre: newProveedor.nombre_fiscal 
+                id_proveedor: newProveedor.id_proveedor, 
+                nombre_fiscal: newProveedor.nombre_fiscal 
             } 
         });
 
@@ -60,16 +81,16 @@ export const proveedorRegistro = async (req, res) => {
 
 export const deleteProveedor = async (req, res) => {
 
-    const { id } = req.body;
+    const { id_proveedor } = req.body;
 
-    if (!id || !isNumeric(id)) {
+    if (!id_proveedor || !isNumeric(id_proveedor)) {
         return res.status(400).json({ message: 'Se requiere un ID de proveedor numérico en el cuerpo de la solicitud.' });
     }
 
     try {
         const count = await Proveedor.destroy({
             where: {
-                id_proveedor: id
+                id_proveedor: id_proveedor
             }
         });
 
@@ -86,56 +107,67 @@ export const deleteProveedor = async (req, res) => {
 };
 
 
-//modulo de actualizacion de datos de empleados
 export const updatedProveedor = async (req, res) => {
+    const { 
+        id_proveedor, 
+        nombre_fiscal, 
+        rif_juridico, 
+        telefono_proveedor, 
+        direccion_proveedor 
+    } = req.body;
 
-    const { id } = req.body;
-    const { nombre, rif, telefono, direccion} = req.body; 
-
-    if (!id || !isNumeric(id)) {
-        return res.status(400).json({ message: 'Se requiere un ID de Proveedor numérico para actualizar.' });
+    if (!id_proveedor || !isNumeric(id_proveedor)) {
+        return res.status(400).json({ 
+            message: 'Se requiere un ID de Proveedor numérico para actualizar.' 
+        });
     }
 
     const updateData = {};
 
-    if (nombre) updateData.nombre_fiscal = nombre;
-    if (rif) updateData.rif_juridico = rif;
-    if (telefono) updateData.telefono_proveedor = telefono;
-    if (direccion) updateData.direccion_proveedor = direccion;
+    if (nombre_fiscal) updateData.nombre_fiscal = nombre_fiscal;
+    if (direccion_proveedor) updateData.direccion_proveedor = direccion_proveedor;
 
-    if (rif !== undefined) {
-        if (!isNumeric(rif)) {
-            return res.status(400).json({ message: 'El RIF debe contener solo números.' });
+    if (rif_juridico !== undefined) {
+        if (!isNumeric(rif_juridico)) {
+            return res.status(400).json({ 
+                message: 'El RIF debe contener solo números.' 
+            });
         }
-        updateData.rif_juridico = String(rif);
+        updateData.rif_juridico = String(rif_juridico);
     }
 
-    if (telefono !== undefined) {
-        if (!isNumeric(telefono)) {
-            return res.status(400).json({ message: 'El sueldo debe contener solo números.' });
+    if (telefono_proveedor !== undefined) {
+        if (!isNumeric(telefono_proveedor)) {
+            return res.status(400).json({ 
+                message: 'El teléfono debe contener solo números.' 
+            });
         }
-        updateData.telefono_proveedor = String(telefono);
+        updateData.telefono_proveedor = String(telefono_proveedor);
     }
 
     if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({ message: 'No se proporcionaron datos para actualizar.' });
+        return res.status(400).json({ 
+            message: 'No se proporcionaron datos para actualizar.' 
+        });
     }
 
-
     try {
- 
+        // Actualizar proveedor
         const [updatedRowsCount] = await Proveedor.update(updateData, {
             where: {
-                id_proveedor: id
-            },
-
+                id_proveedor: id_proveedor
+            }
         });
 
+        // Verificar si se encontró y actualizó el proveedor
         if (updatedRowsCount === 0) {
-            return res.status(404).json({ message: 'Proveedor no encontrado o no hubo cambios en los datos.' });
+            return res.status(404).json({ 
+                message: 'Proveedor no encontrado o no hubo cambios en los datos.' 
+            });
         }
 
-        const updatedProveedor = await Proveedor.findByPk(id);
+        // Obtener el proveedor actualizado
+        const updatedProveedor = await Proveedor.findByPk(id_proveedor);
 
         res.status(200).json({ 
             message: 'Proveedor actualizado exitosamente.',
@@ -144,6 +176,8 @@ export const updatedProveedor = async (req, res) => {
 
     } catch (error) {
         console.error('Error al actualizar proveedor:', error);
-        res.status(500).json({ message: 'Error del servidor al actualizar.' });
+        res.status(500).json({ 
+            message: 'Error del servidor al actualizar.' 
+        });
     }
 };

@@ -1,99 +1,78 @@
 import express from 'express';
 import cors from 'cors';
-import authRoutes from './routes/auth.js';
-import database from './config/database.js';
-const { sequelize } = database;
-import clientes from './routes/rutas.js';
-import vehiculoRoutes from './routes/vehiculoRoutes.js';
-import transaccionRoutes from './routes/transaccionesroutes.js'; // ← NUEVA IMPORTACIÓN (ruta con el mismo uso de mayúsculas/minúsculas que el archivo)
-import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
 import morgan from 'morgan';
+
+// Importación de Rutas
+import authRoutes from './routes/auth.js';
+import clientesRoutes from './routes/rutas.js'; // Renombrado para claridad
+import vehiculoRoutes from './routes/vehiculoRoutes.js';
+import transaccionRoutes from './routes/transaccionesroutes.js';
 import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
-import setupAssociations from './models/AssociationsTransacciones.js'; // ← NUEVA IMPORTACIÓN
+import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
+import facturaRoutes from './routes/facturaRoutes.js';
+import proveedoresRoutes from './routes/proveedoresRoutes.js'; // ¡NUEVA RUTA PARA FACTURAS!
+
+// Configuración de Base de Datos
+import database from './config/database.js';
+import setupAssociations from './models/AssociationsTransacciones.js';
 import error from '../red/errors.js';
 
+const { sequelize } = database;
+
 // ==================== INICIALIZACIÓN ====================
-const app = express(); // ← PRIMERO declarar app
+const app = express();
 const PORT = 3000;
 
 // ==================== MIDDLEWARES ====================
-app.use(cors()); // ← LUEGO usar app
+// Habilita CORS para permitir que tu app Vue se conecte
+app.use(cors());
+// Para entender JSON y datos de formularios
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Para ver logs de las peticiones en la consola (muy útil para depurar)
 app.use(morgan('dev'));
 
-// ==================== RUTAS ====================
-app.use('/api/clientes', clientes);
+// ==================== RUTAS DE LA API ====================
 app.use('/api/auth', authRoutes);
+app.use('/api/proveedores', proveedoresRoutes)
+app.use('/api/clientes', clientesRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
-app.use('/api/transacciones', transaccionRoutes); // ← NUEVA RUTA
+app.use('/api/transacciones', transaccionRoutes);
+app.use('/api/facturas', facturaRoutes); // ¡NUEVA RUTA PARA FACTURAS!
 
-// ==================== RUTAS GENERALES ====================
-// Health Check
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: '🚀 API MecanoSoft funcionando correctamente',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    database: 'MySQL + Sequelize',
-     modules: ['Clientes', 'Auth', 'Vehículos', 'Diagnósticos', 'Transacciones'] // ← ACTUALIZADO
-  });
-});
-
-// Información de la API
-app.get('/api/info', (req, res) => {
-  res.json({
-    name: 'MecanoSoft API',
-    version: '1.0.0',
-    description: 'Sistema administrativo para taller mecánico',
-    technologies: ['Node.js', 'Express', 'MySQL', 'Sequelize'],
-    endpoints: {
-      vehiculos: {
-        'GET /api/vehiculos': 'Obtener todos los vehículos',
-        'GET /api/vehiculos/diagnostico': 'Vehículos para diagnóstico',
-        'GET /api/vehiculos/:matricula': 'Obtener vehículo por matrícula',
-        'POST /api/vehiculos': 'Crear nuevo vehículo',
-        'PUT /api/vehiculos/:matricula': 'Actualizar vehículo',
-        'DELETE /api/vehiculos/:matricula': 'Eliminar vehículo'
-      },
-      diagnosticos: {
-        'GET /api/diagnosticos': 'Obtener todos los diagnósticos',
-        'GET /api/diagnosticos/vehiculo/:vehiculoId': 'Diagnósticos por vehículo',
-        'GET /api/diagnosticos/:id': 'Obtener diagnóstico por ID',
-        'POST /api/diagnosticos': 'Crear nuevo diagnóstico',
-        'PUT /api/diagnosticos/:id': 'Actualizar diagnóstico',
-        'DELETE /api/diagnosticos/:id': 'Eliminar diagnóstico'
-      }
-    }
-  });
-});
-
-// ==================== MANEJO DE ERRORES ====================
+// ==================== MANEJO DE ERRORES CENTRALIZADO ====================
 app.use(error);
 
 // ==================== INICIO DEL SERVIDOR ====================
 async function startServer() {
   try {
+    // 1. Autenticar conexión con la BD
     await sequelize.authenticate();
-    console.log('Conexión a la base de datos establecida correctamente.');
+    console.log('✅ Conexión a la base de datos establecida correctamente.');
 
-    // Configurar relaciones ANTES de sincronizar
-    console.log('Configurando asociaciones...');
+    // 2. Configurar asociaciones
+    console.log('🔄 Configurando asociaciones de modelos...');
     setupAssociations();
+    console.log('✅ Asociaciones configuradas.');
     
-    await sequelize.sync();
-    console.log('Modelos sincronizados.');
+    // 3. Sincronizar la base de datos
+    console.log('🔄 Sincronizando modelos con la base de datos...');
+    // Usar { alter: true } en desarrollo para ajustar tablas sin borrar datos.
+    await sequelize.sync({ alter: true });
+    console.log('✅ Modelos sincronizados con la base de datos.');
 
+    // 4. Iniciar el servidor
     app.listen(PORT, () => {
-      console.log(`Servidor Express escuchando en http://localhost:${PORT}`);
+      console.log(`🚀 Servidor Express escuchando en http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('Error al iniciar el servidor o conectar a la base de datos:', error);
+    console.error('❌ Error al iniciar el servidor:', error);
+    process.exit(1); // Detiene la aplicación si no se puede conectar a la BD
   }
 }
+
 startServer();
 
 export default app;

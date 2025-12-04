@@ -30,4 +30,4 @@ const Diagnostico = sequelize.define('Diagnostico', {
   timestamps: false
 });
 
-export { Diagnostico };
+export default Diagnostico;

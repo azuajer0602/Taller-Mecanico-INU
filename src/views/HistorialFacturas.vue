@@ -44,7 +44,7 @@
           <tr v-for="factura in facturasFiltradas" :key="factura.id">
             <td>{{ factura.id }}</td>
             <td>{{ factura.Cliente.nombre }} {{ factura.Cliente.apellido }}</td>
-            <td>{{ factura.fechaPago }}</td>
+            <td>{{ new Date(factura.fechaPago).toLocaleDateString() }}</td>
             <td>{{ getMoneda(factura) }}{{ parseFloat(factura.total).toFixed(2) }}</td>
             <td>
               <span class="badge" :class="getEstadoClass(factura.estado)">
@@ -56,19 +56,25 @@
                 <button class="btn btn-sm btn-outline-primary" @click="verDetalles(factura)" title="Ver Detalles">
                   <i class="bi bi-eye-fill"></i>
                 </button>
-                <button 
-                  class="btn btn-sm btn-outline-success" 
-                  @click="cambiarEstado(factura.id, 'Pagado')" 
-                  v-if="factura.estado === 'Pendiente'"
-                  title="Marcar como Pagada">
-                  <i class="bi bi-check-circle-fill"></i>
+                <button
+                  v-if="factura.estado === 'Pagado'"
+                  class="btn btn-sm btn-outline-warning"
+                  @click="cambiarEstado(factura.id, 'Pendiente')"
+                  title="Cambiar a Pendiente">
+                  <i class="bi bi-clock-history"></i>
                 </button>
-                <button 
-                  class="btn btn-sm btn-outline-danger" 
-                  @click="anularFactura(factura.id)" 
-                  v-if="factura.estado !== 'Anulada'"
+                <button
+                  v-if="factura.estado === 'Pendiente'"
+                  class="btn btn-sm btn-outline-success"
+                  @click="cambiarEstado(factura.id, 'Pagado')"
+                  title="Marcar como Pagado">
+                  <i class="bi bi-check-circle"></i>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  @click="anularFactura(factura.id)"
                   title="Anular Factura">
-                  <i class="bi bi-x-circle-fill"></i>
+                  <i class="bi bi-x-circle"></i>
                 </button>
               </div>
             </td>
@@ -89,29 +95,37 @@ const filtros = ref({
   nombre: ''
 });
 
-const fetchFacturas = () => {
+const API_BASE = 'http://localhost:3000/api';
+
+const fetchFacturas = async () => {
   loading.value = true;
   try {
-    // Leemos las facturas desde localStorage
-    const facturasGuardadas = JSON.parse(localStorage.getItem('facturas') || '[]');
-    // Ordenamos para mostrar las más nuevas primero
-    facturas.value = facturasGuardadas.sort((a, b) => b.id - a.id);
+    const response = await fetch(`${API_BASE}/facturas`);
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.success) {
+      facturas.value = data.data ? data.data.sort((a, b) => b.id - a.id) : [];
+    } else {
+      throw new Error(data.message || 'La API devolvió un error');
+    }
   } catch (error) {
-    console.error("Error al cargar facturas desde localStorage:", error);
-    // Este mensaje solo aparecería si hay un problema con localStorage, lo cual es raro.
-    alert("No se pudieron cargar las facturas del historial local.");
+    console.error("Error al cargar facturas desde el backend:", error);
+    facturas.value = []; // Asegurar que facturas esté vacío en caso de error
+    alert("No se pudieron cargar las facturas. Revise la conexión con el servidor.");
   } finally {
     loading.value = false;
   }
 };
 
 const facturasFiltradas = computed(() => {
-  // Si no hay facturas, no hay nada que filtrar
   if (!facturas.value) return [];
 
   return facturas.value.filter(factura => {
-    const filtroFecha = !filtros.value.fecha || factura.fechaPago === filtros.value.fecha;
-    const nombreCompleto = `${factura.Cliente.nombre} ${factura.Cliente.apellido}`.toLowerCase();
+    const fechaFactura = new Date(factura.fechaPago).toISOString().split('T')[0];
+    const filtroFecha = !filtros.value.fecha || fechaFactura === filtros.value.fecha;
+    const nombreCompleto = `${factura.Cliente?.nombre || ''} ${factura.Cliente?.apellido || ''}`.toLowerCase();
     const filtroNombre = !filtros.value.nombre || nombreCompleto.includes(filtros.value.nombre.toLowerCase());
     return filtroFecha && filtroNombre;
   });
@@ -122,32 +136,43 @@ const limpiarFiltros = () => {
   filtros.value.nombre = '';
 };
 
-const actualizarStorage = () => {
-  localStorage.setItem('facturas', JSON.stringify(facturas.value));
-  fetchFacturas(); // Recargamos y reordenamos la lista
-};
-
-const anularFactura = (id) => {
+const anularFactura = async (id) => {
   if (confirm('¿Está seguro de que desea ANULAR esta factura? Esta acción no se puede deshacer.')) {
-    const index = facturas.value.findIndex(f => f.id === id);
-    if (index !== -1) {
-      facturas.value[index].estado = 'Anulada';
-      actualizarStorage();
+    try {
+      const response = await fetch(`${API_BASE}/facturas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'Anulada' })
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Error en la respuesta de la API');
+      }
+      await fetchFacturas();
       alert('Factura anulada correctamente.');
-    } else {
-      alert('Error: No se encontró la factura.');
+    } catch (error) {
+      console.error("Error al anular la factura:", error);
+      alert('Error: No se pudo anular la factura.');
     }
   }
 };
 
-const cambiarEstado = (id, nuevoEstado) => {
-  const index = facturas.value.findIndex(f => f.id === id);
-  if (index !== -1) {
-    facturas.value[index].estado = nuevoEstado;
-    actualizarStorage();
+const cambiarEstado = async (id, nuevoEstado) => {
+  try {
+    const response = await fetch(`${API_BASE}/facturas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: nuevoEstado })
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.message || 'Error en la respuesta de la API');
+    }
+    await fetchFacturas();
     alert(`Estado de la factura cambiado a ${nuevoEstado}.`);
-  } else {
-    alert('Error: No se encontró la factura.');
+  } catch (error) {
+    console.error("Error al cambiar estado:", error);
+    alert('Error: No se pudo cambiar el estado de la factura.');
   }
 };
 
@@ -178,10 +203,9 @@ const getEstadoClass = (estado) => {
 };
 
 onMounted(() => {
-  fetchFacturas();
+  // fetchFacturas(); // Ya no se llama aquí, se llama desde el padre
 });
 
-// Exponemos el método para que el componente padre pueda llamarlo
 defineExpose({ fetchFacturas });
 </script>
 

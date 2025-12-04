@@ -1,6 +1,11 @@
 <script setup>
-import Side from '../components/SidebarComponent.vue';/*Importo el componente Sidebar*/
-import { reactive } from 'vue';
+import Side from '../components/SidebarComponent.vue';
+import { reactive, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const API_BASE = 'http://localhost:3000/api';
+const route = useRoute();
+const router = useRouter();
 
 const cliente = reactive({
   cedula: "",
@@ -8,8 +13,46 @@ const cliente = reactive({
   apellido: "",
   email: "",
   direccion: "",
-  telefono:""
-})
+  telefono: ""
+});
+
+const submitForm = async () => {
+    try {
+        const response = await fetch(`${API_BASE}/clientes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // CORRECCIÓN: El modelo de Cliente espera 'correo', no 'email'.
+            body: JSON.stringify({
+              cedula: cliente.cedula,
+              nombre: cliente.nombre,
+              apellido: cliente.apellido,
+              correo: cliente.email, // Se envía 'correo' al backend
+              direccion: cliente.direccion,
+              telefono: cliente.telefono
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Cliente registrado exitosamente.');
+            router.push({
+                path: '/facturacion',
+                query: { cedula: cliente.cedula } // Devolvemos la cédula para autocompletar
+            });
+        } else {
+            throw new Error(data.message || 'Error al registrar el cliente.');
+        }
+    } catch (error) {
+        console.error('Error al registrar cliente:', error);
+        alert(`Error: ${error.message}`);
+    }
+};
+
+onMounted(() => {
+    // Si se pasa una cédula desde la URL, la ponemos en el formulario
+    if (route.query.cedula) {
+        cliente.cedula = route.query.cedula;
+    }
+});
 
 </script>
 
@@ -32,11 +75,11 @@ const cliente = reactive({
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="cedula" class="form-label">Cédula</label>
-              <input v-model="cliente.cedula" type="number" class="form-control form-control-lg" id="cedula" placeholder="Ingresar Cédula" required />
+              <input v-model="cliente.cedula" type="text" class="form-control form-control-lg" id="cedula" placeholder="Ingresar Cédula" required />
             </div>
             <div class="col-md-6">
-              <label for="tlf" class="form-label">Teléfono</label>
-              <input v-model="cliente.telefono" type="tel" class="form-control form-control-lg" id="tlf" placeholder="Ej: 0412-1234567" required />
+              <label for="telefono" class="form-label">Teléfono</label>
+              <input v-model="cliente.telefono" type="tel" class="form-control form-control-lg" id="telefono" placeholder="Ej: 0412-1234567" required />
             </div>
           </div>
 
@@ -62,7 +105,7 @@ const cliente = reactive({
           </div>
 
           <div class="d-flex justify-content-between pt-2">
-            <button type="button" class="btn btn-secondary-outline w-50 me-2">Cancelar</button>
+            <button type="button" @click="router.push('/facturacion')" class="btn btn-secondary-outline w-50 me-2">Cancelar</button>
             <button type="submit" class="btn btn-accent w-50">Registrar Cliente</button>
           </div>
         </form>

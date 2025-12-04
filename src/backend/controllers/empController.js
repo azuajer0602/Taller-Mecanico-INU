@@ -35,6 +35,27 @@ const fechafutura = (formattedDate) => {
     return dateToCheck <= today;
 };
 
+export const obtenerTodos = async (req , res) => {
+    try {
+        const empleados = await Empleado.findAll({
+            attributes: { exclude: ['contrasena'] } 
+        });
+
+        if (empleados.length === 0) {
+            return res.status(404).json({ message: 'No hay empleados registrados.' });
+        }
+
+        res.status(200).json({
+            message: 'Lista de empleados obtenida exitosamente.',
+            empleados: empleados
+        });
+
+    } catch (error) {
+        console.error('Error al obtener todos los empleados:', error);
+        res.status(500).json({ message: 'Error del servidor al obtener empleados.' });
+    }
+};
+
 
 //modulo de login
 
@@ -54,7 +75,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Credenciales inválidas.' });
     }
 
-    const isMatch = await empleado.comparePassword(password);
+    const isMatch = (password === empleado.contrasena);
 
     if (!isMatch) {
       return res.status(401).json({ message: 'Credenciales inválidas.' });
