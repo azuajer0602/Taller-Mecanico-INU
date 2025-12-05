@@ -104,7 +104,7 @@
         :class="{ active: $route.path === '/repuestos' }"
       >
         <span class="nav-icon">🛠️</span>
-        <span class="nav-text">Repuestos</span>
+        <span class="nav-text">Inventario</span>
       </router-link>
       
       <router-link 

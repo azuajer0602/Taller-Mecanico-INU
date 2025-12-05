@@ -201,7 +201,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="prov in proveedores" :key="prov.id_provedor">
+              <tr v-for="prov in proveedores" :key="prov.id_proveedor">
                 <td>{{ prov.id_proveedor }}</td>
                 <td>{{ prov.nombre_fiscal }}</td>
                 <td>{{ prov.rif_juridico }}</td>
@@ -211,7 +211,7 @@ onMounted(() => {
                   <button class="btn btn-sm btn-warning me-2" @click="editarProveedor(prov)">
                     <i class="fas fa-edit"></i> Editar
                   </button>
-                  <button class="btn btn-sm btn-danger" @click="eliminarProveedor(prov.id_provedor)">
+                  <button class="btn btn-sm btn-danger" @click="eliminarProveedor(prov.id_proveedor)">
                     <i class="fas fa-trash"></i> Eliminar
                   </button>
                 </td>
