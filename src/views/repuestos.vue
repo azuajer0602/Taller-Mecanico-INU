@@ -1,414 +1,350 @@
+<script setup>
+import Side from '../components/SidebarComponent.vue';
+import { reactive, ref, onMounted } from 'vue';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:3000/api/repuestos';
+
+const repuesto = reactive({
+  id_repuesto: "",
+  nombre_repuesto: "",
+  desc_repuesto: "",
+  precio_unitario: "",
+  stock_inventario: ""
+})
+
+const repuestos = ref([]);
+const cargando = ref(false);
+const error = ref(null);
+const repuestoEditandoId = ref(null);
+
+const cargarRepuestos = async () => {
+  cargando.value = true;
+  error.value = null;
+  try {
+    console.log('Cargando Repuestos desde:', `${API_BASE_URL}/obtenerRep`);
+    const response = await axios.get(`${API_BASE_URL}/obtenerRep`);
+    
+
+    repuestos.value = response.data.repuestos || response.data;
+    console.log(" Proveedores cargados:", repuestos.value);
+    
+  } catch (err) {
+    console.error(' Error al cargar los repuestos:', err);
+    error.value = `Error: ${err.response?.status || 'Conexión'} - ${err.response?.data?.message || err.message}`;
+  } finally {
+    cargando.value = false;
+  }
+};
+
+const submitForm = async () => {
+  try {
+    const datosParaEnviar = {
+      id_proveedor: proveedor.id_proveedor,
+      nombre_fiscal: proveedor.nombre_fiscal,
+      rif_juridico: proveedor.rif_juridico,
+      telefono_proveedor: proveedor.telefono_proveedor,
+      direccion_proveedor: proveedor.direccion_proveedor
+    };
+
+    if (repuestoEditandoId.value !== null) {
+      
+      await axios.put(`${API_BASE_URL}/updateRep`, datosParaEnviar);
+    } else {
+      
+      await axios.post(`${API_BASE_URL}/registerRep`, datosParaEnviar);
+    }
+    
+    await cargarRepuestos();
+    cancelarEdicion();
+    alert(repuestoEditandoId.value !== null ? 'Repuestos actualizado' : 'Repuestos registrado');
+    
+  } catch (err) {
+    console.error('❌ Error al guardar Repuestos:', err);
+    alert('Error: ' + (err.response?.data?.message || err.message));
+  }
+}
+
+const editarRepuesto = (repuestoParaEditar) => {
+  Object.assign(repuesto, {
+    id_repuesto: repuestoParaEditar.id_repuesto,
+    nombre_repuesto: repuestoParaEditar.nombre_repuesto,
+    desc_repuesto: repuestoParaEditar.desc_repuesto,
+    precio_unitario: repuestoParaEditar.precio_unitario,
+    stock_inventario: repuestoParaEditar.stock_inventario
+  });
+  
+  repuestoEditandoId.value = repuestoParaEditar.id_repuesto;
+  document.querySelector('.form-container')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+const eliminarRepuesto = async (id) => {
+  if (!confirm('¿Estás seguro de que deseas eliminar este Repuesto?')) {
+    return;
+  }
+
+  try {
+    console.log("Eliminando Repuesto ID:", id);
+    await axios.delete(`${API_BASE_URL}/deleteRep`, {
+      data: { id_repuesto: id }
+    });
+    
+    await cargarRepuestos();
+    alert('Repuesto eliminado correctamente');
+  } catch (error) {
+    console.error('Error al eliminar Repuesto:', error);
+    alert('Error: ' + (error.response?.data?.message || error.message));
+  }
+};
+
+const cancelarEdicion = () => {
+  Object.assign(repuesto, {
+    id_repuesto: "",
+  nombre_repuesto: "",
+  desc_repuesto: "",
+  precio_unitario: "",
+  stock_inventario: ""
+  });
+  repuestoEditandoId.value = null;
+}
+
+onMounted(() => {
+  cargarRepuestos();
+});
+</script>
+
 <template>
-  <Side />
+  <Side/>
   <div class="main-content">
-    <div class="container mt-4">
-      <!-- Modal para agregar/editar repuesto -->
-      <div class="modal fade" id="repuestoModal" tabindex="-1" aria-labelledby="repuestoModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title" id="repuestoModalLabel">
-                <i class="bi bi-plus-circle me-2"></i>{{ esEdicion ? 'Editar' : 'Agregar' }} Repuesto
-              </h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <form @submit.prevent="guardarRepuesto">
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="nombre" class="form-label">Nombre:</label>
-                    <input 
-                      id="nombre" 
-                      v-model="repuestoActual.nombre" 
-                      type="text" 
-                      class="form-control" 
-                      required 
-                    />
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label for="precio" class="form-label">Precio Unitario:</label>
-                    <div class="input-group">
-                      <span class="input-group-text">$</span>
-                      <input 
-                        id="precio" 
-                        v-model.number="repuestoActual.precio_unitario" 
-                        type="number" 
-                        step="0.01" 
-                        min="0" 
-                        class="form-control" 
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <div class="col-12 mb-3">
-                    <label for="descripcion" class="form-label">Descripción:</label>
-                    <textarea 
-                      id="descripcion" 
-                      v-model="repuestoActual.descripcion" 
-                      class="form-control" 
-                      rows="3"
-                    ></textarea>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label for="stock" class="form-label">Stock en Inventario:</label>
-                    <input 
-                      id="stock" 
-                      v-model.number="repuestoActual.stock" 
-                      type="number" 
-                      min="0" 
-                      class="form-control" 
-                      required 
-                    />
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <label for="proveedor" class="form-label">Proveedor:</label>
-                    <select 
-                      id="proveedor" 
-                      v-model="repuestoActual.id_proveedor" 
-                      class="form-select"
-                      required
-                    >
-                      <option value="">Seleccionar proveedor</option>
-                      <option v-for="proveedor in proveedores" :key="proveedor.id_proveedor" :value="proveedor.id_proveedor">
-                        {{ proveedor.nombre }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                  <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save-fill me-1"></i>{{ esEdicion ? 'Actualizar' : 'Guardar' }}
+
+    <div class="table-container mt-5">
+      <div class="card employee-table-card p-4 shadow-lg">
+        <div class="text-center mb-4">
+          <i class="bi bi-tools form-icon"></i>
+          <h3 class="form-title">Inventario Disponible</h3>
+          <p class="form-subtitle">Gestiona los Repuestos disponibles registrados en el sistema.</p>
+        </div>
+        
+      
+        <div v-if="cargando" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2">Cargando Repuestos...</p>
+        </div>
+      
+        <div v-else-if="error" class="alert alert-danger text-center">
+          {{ error }}
+        </div>
+        
+       
+        <div v-else-if="repuestos.length === 0" class="text-center py-4">
+          <p class="text-muted">No hay Repuestos registrados aún.</p>
+        </div>
+        
+        <!-- Table -->
+        <div v-else class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">ID Repuesto</th>
+                <th scope="col">Nombre Repuesto</th>
+                <th scope="col">Descripcion</th>
+                <th scope="col">Precio</th>
+                <th scope="col">Cantidad Disp</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="rep in repuestos" :key="rep.id_repuesto">
+                <td>{{ rep.id_repuesto }}</td>
+                <td>{{ rep.nombre_repuesto }}</td>
+                <td>{{ rep.desc_repuesto }}</td>
+                <td>{{ rep.precio_unitario }}</td>
+                <td>{{ rep.stock_inventario }}</td>
+                <td>
+                  <button class="btn btn-sm btn-warning me-2" @click="editarProveedor(rep)">
+                    <i class="fas fa-edit"></i> Editar
                   </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal de confirmación para eliminar -->
-      <div class="modal fade" id="confirmarEliminarModal" tabindex="-1" aria-labelledby="confirmarEliminarModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-              <h5 class="modal-title" id="confirmarEliminarModalLabel">
-                <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Eliminación
-              </h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              ¿Está seguro de que desea eliminar el repuesto "<strong>{{ repuestoActual.nombre }}</strong>"?
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-              <button type="button" class="btn btn-danger" @click="eliminarRepuestoConfirmado">
-                <i class="bi bi-trash-fill me-1"></i>Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <h1 class="mb-0 h3">
-            <i class="bi bi-gear-fill me-2"></i>Gestión de Repuestos
-          </h1>
-          <button 
-            type="button" 
-            class="btn btn-light" 
-            data-bs-toggle="modal" 
-            data-bs-target="#repuestoModal"
-            @click="abrirModalAgregar"
-          >
-            <i class="bi bi-plus-lg me-1"></i>Comprar Repuesto
-          </button>
-        </div>
-
-        <div class="card-body">
-          <!-- Búsqueda -->
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  placeholder="Buscar por nombre o descripción..." 
-                  v-model="filtroBusqueda"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Tabla de repuestos -->
-          <div class="table-responsive">
-            <table class="table table-striped table-hover">
-              <thead class="table-dark">
-                <tr>
-                  <th scope="col">ID</th>
-                  <th scope="col">Nombre</th>
-                  <th scope="col">Descripción</th>
-                  <th scope="col">Precio Unitario</th>
-                  <th scope="col">Stock</th>
-                  <th scope="col">Proveedor</th>
-                  <th scope="col">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="repuesto in repuestosFiltrados" :key="repuesto.id_repues">
-                  <th scope="row">{{ repuesto.id_repues }}</th>
-                  <td>{{ repuesto.nombre }}</td>
-                  <td>{{ repuesto.descripcion }}</td>
-                  <td>$ {{ repuesto.precio_unitario.toFixed(2) }}</td>
-                  <td>
-                    <span 
-                      class="badge" 
-                      :class="{
-                        'bg-danger': repuesto.stock === 0,
-                        'bg-warning text-dark': repuesto.stock > 0 && repuesto.stock <= 5,
-                        'bg-success': repuesto.stock > 5
-                      }"
-                    >
-                      {{ repuesto.stock }}
-                    </span>
-                  </td>
-                  <td>{{ obtenerNombreProveedor(repuesto.id_proveedor) }}</td>
-                  <td>
-                    <div class="btn-group btn-group-sm" role="group">
-                      <button 
-                        type="button" 
-                        class="btn btn-outline-primary"
-                        data-bs-toggle="modal" 
-                        data-bs-target="#repuestoModal"
-                        @click="editarRepuesto(repuesto)"
-                      >
-                        <i class="bi bi-pencil-fill"></i>
-                      </button>
-                      <button 
-                        type="button" 
-                        class="btn btn-outline-danger"
-                        data-bs-toggle="modal" 
-                        data-bs-target="#confirmarEliminarModal"
-                        @click="prepararEliminar(repuesto)"
-                      >
-                        <i class="bi bi-trash-fill"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Mensaje cuando no hay resultados -->
-          <div v-if="repuestosFiltrados.length === 0" class="text-center py-4">
-            <i class="bi bi-inbox display-1 text-muted"></i>
-            <p class="mt-3 text-muted">No se encontraron repuestos que coincidan con los criterios de búsqueda.</p>
-          </div>
+                  <button class="btn btn-sm btn-danger" @click="eliminarRepuesto(rep.id_repuesto)">
+                    <i class="fas fa-trash"></i> Eliminar
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import Side from '../components/SidebarComponent.vue';
-import { ref, computed, onMounted } from "vue";
-import { Modal } from 'bootstrap';
-
-const API_BASE = 'http://localhost:3000/api';
-
-// Estado de la aplicación
-const repuestos = ref([]);
-const proveedores = ref([]);
-const repuestoActual = ref({
-  id_repues: null,
-  nombre: '',
-  descripcion: '',
-  precio_unitario: 0,
-  stock: 0,
-  id_proveedor: ''
-});
-const esEdicion = ref(false);
-
-// Filtros
-const filtroBusqueda = ref('');
-
-// Cargar repuestos y proveedores al montar el componente
-const cargarRepuestos = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/repuestos`);
-    const data = await response.json();
-    
-    if (data.success) {
-      repuestos.value = data.data;
-    } else {
-      throw new Error(data.message || 'Error al cargar repuestos');
-    }
-  } catch (error) {
-    console.error("Error cargando repuestos:", error);
-    alert("No se pudieron cargar los repuestos. Revise la conexión con el servidor.");
-  }
-};
-
-const cargarProveedores = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/proveedores`);
-    const data = await response.json();
-    
-    if (data.success) {
-      proveedores.value = data.data;
-    } else {
-      throw new Error(data.message || 'Error al cargar proveedores');
-    }
-  } catch (error) {
-    console.error("Error cargando proveedores:", error);
-    alert("No se pudieron cargar los proveedores. Revise la conexión con el servidor.");
-  }
-};
-
-// Obtener nombre del proveedor por ID
-const obtenerNombreProveedor = (idProveedor) => {
-  const proveedor = proveedores.value.find(p => p.id_proveedor === idProveedor);
-  return proveedor ? proveedor.nombre : 'Proveedor no encontrado';
-};
-
-// Filtrar repuestos
-const repuestosFiltrados = computed(() => {
-  if (!filtroBusqueda.value) {
-    return repuestos.value;
-  }
-  
-  const busqueda = filtroBusqueda.value.toLowerCase();
-  return repuestos.value.filter(repuesto => 
-    repuesto.nombre.toLowerCase().includes(busqueda) || 
-    repuesto.descripcion.toLowerCase().includes(busqueda)
-  );
-});
-
-// Funciones para el modal
-const abrirModalAgregar = () => {
-  esEdicion.value = false;
-  repuestoActual.value = {
-    id_repues: null,
-    nombre: '',
-    descripcion: '',
-    precio_unitario: 0,
-    stock: 0,
-    id_proveedor: ''
-  };
-};
-
-const editarRepuesto = (repuesto) => {
-  esEdicion.value = true;
-  repuestoActual.value = { ...repuesto };
-};
-
-const prepararEliminar = (repuesto) => {
-  repuestoActual.value = { ...repuesto };
-};
-
-// Operaciones CRUD
-const guardarRepuesto = async () => {
-  try {
-    const url = esEdicion.value 
-      ? `${API_BASE}/repuestos/${repuestoActual.value.id_repues}`
-      : `${API_BASE}/repuestos`;
-    
-    const method = esEdicion.value ? 'PUT' : 'POST';
-    
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(repuestoActual.value)
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      // Cerrar modal
-      const modal = Modal.getInstance(document.getElementById('repuestoModal'));
-      modal.hide();
-      
-      // Recargar datos
-      await cargarRepuestos();
-      
-      alert(`Repuesto ${esEdicion.value ? 'actualizado' : 'agregado'} correctamente.`);
-    } else {
-      throw new Error(data.message || 'Error al guardar repuesto');
-    }
-  } catch (error) {
-    console.error("Error guardando repuesto:", error);
-    alert(`Error al ${esEdicion.value ? 'actualizar' : 'agregar'} repuesto: ${error.message}`);
-  }
-};
-
-const eliminarRepuestoConfirmado = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/repuestos/${repuestoActual.value.id_repues}`, {
-      method: 'DELETE'
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      // Cerrar modal
-      const modal = Modal.getInstance(document.getElementById('confirmarEliminarModal'));
-      modal.hide();
-      
-      // Recargar datos
-      await cargarRepuestos();
-      
-      alert('Repuesto eliminado correctamente.');
-    } else {
-      throw new Error(data.message || 'Error al eliminar repuesto');
-    }
-  } catch (error) {
-    console.error("Error eliminando repuesto:", error);
-    alert(`Error al eliminar repuesto: ${error.message}`);
-  }
-};
-
-// Inicialización
-onMounted(() => {
-  cargarRepuestos();
-  cargarProveedores();
-});
-</script>
-
 <style scoped>
 .main-content {
   padding: 20px;
   min-height: 100vh;
-  margin-left: 280px;
-  background-color: #f8f9fa;
+  margin-left: 250px;
+  background: linear-gradient(#ff7e5f, #feb47b); 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.form-container, .table-container {
+  width: 100%;
+  max-width: 1200px; 
+  padding: 20px;
+}
+
+.employee-form-card, .employee-table-card {
+  background-color: #D8D8C0; 
+  border-radius: 16px; 
+  border: none;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); 
+}
+
+.form-icon {
+  font-size: 40px;
+  color: #DF8615; 
+  margin-bottom: 10px;
+}
+
+.form-title {
+  color: #2c3e50; 
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.form-subtitle {
+  color: #7A8370;
+  font-size: 14px;
+  margin-bottom: 0;
+}
+
+.form-label {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.form-control {
+  border: 2px solid #7A8370;
+  border-radius: 8px; 
+  padding: 10px 15px;
+  transition: all 0.3s ease;
+  background-color: #f7f7f0; 
+  color: #2c3e50;
+}
+
+.form-control:focus {
+  border-color: #DF8615; 
+  box-shadow: 0 0 0 0.25rem rgba(223, 134, 21, 0.25);
+}
+
+.form-control::placeholder {
+  color: #A0A0A0;
+  font-style: italic;
+}
+
+.btn-accent {
+  background-color: #DF8615; 
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-accent:hover {
+  background-color: #F84600; 
+  color: white;
+}
+
+.btn-secondary-outline {
+  background-color: transparent;
+  color: #7A8370;
+  border: 2px solid #7A8370;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 10px 20px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary-outline:hover {
+  background-color: #7A8370;
+  color: #D8D8C0;
+}
+
+/* Estilos para la tabla */
+.table {
+  background-color: #f7f7f0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .table th {
-  border-top: none;
+  background-color: #7A8370;
+  color: white;
+  font-weight: 600;
+  border: none;
+  padding: 12px 15px;
 }
 
-.card {
-  margin-bottom: 1rem;
+.table td {
+  padding: 12px 15px;
+  vertical-align: middle;
+  border-bottom: 1px solid #D8D8C0;
 }
 
-@media screen and (max-width: 768px) {
+.table-hover tbody tr:hover {
+  background-color: rgba(223, 134, 21, 0.1);
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover {
+  background-color: #e0a800;
+  border-color: #d39e00;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+@media (max-width: 992px) {
   .main-content {
     margin-left: 0;
     padding: 15px;
+    align-items: flex-start; 
   }
   
-  .btn-group {
-    display: flex;
-    flex-direction: column;
+  .form-container, .table-container {
+    padding: 0;
   }
   
-  .btn-group .btn {
-    margin-bottom: 0.25rem;
+  .table-responsive {
+    font-size: 14px;
   }
+}
+
+.logo-fixed {
+  display: none;
 }
 </style>

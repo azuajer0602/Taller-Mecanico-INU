@@ -1,5 +1,6 @@
 
 import Empleado from '../models/Empleado.js'; 
+import { Op } from 'sequelize';
 
 const isNumeric = (value) => {
     if (value === null || value === undefined) return false;
@@ -125,7 +126,13 @@ export const register = async (req, res) => {
 
     try {
 
-        const existingEmpleado = await Empleado.findOne({ where: { usuario } || {cedula} });
+        const existingEmpleado = await Empleado.findOne({
+        where: {
+            [Op.or]: [
+                { usuario: usuario },
+                { cedula_emp: cedula }
+            ]
+        } });
 
         if (existingEmpleado) {
             return res.status(409).json({ message: 'El usuario o cedula ya está en uso.' });}

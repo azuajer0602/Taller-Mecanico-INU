@@ -181,15 +181,27 @@ onMounted(() => {
           </div>
           
           <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label for="position" class="form-label">Cargo</label>
-              <input v-model="empleado.cargo" type="text" class="form-control" id="position" placeholder="Ej: Gerente de Ventas" required />
-            </div>
-            <div class="col-md-6">
-              <label for="date_contratacion" class="form-label">Fecha Contratación</label>
-              <input v-model="empleado.fechaContratacion" type="date" class="form-control" id="date_contratacion" required />
-            </div>
-          </div>
+    <div class="col-md-6">
+        <label for="position" class="form-label">Cargo</label>
+        
+        <select 
+            v-model="empleado.cargo" 
+            class="form-control" 
+            id="position" 
+            required
+        >
+            <option value="" disabled>Selecciona un Cargo</option> 
+            
+            <option value="Mecanico">Mecánico</option>
+            <option value="Administrador">Administrador</option>
+            <option value="Gerente">Gerente</option>
+        </select>
+        </div>
+    <div class="col-md-6">
+        <label for="date_contratacion" class="form-label">Fecha Contratación</label>
+        <input v-model="empleado.fechaContratacion" type="date" class="form-control" id="date_contratacion" required />
+    </div>
+</div>
           
           <div class="mb-4">
             <label for="sueldo" class="form-label">Sueldo Base ($)</label>

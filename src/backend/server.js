@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import authRoutes from './routes/auth.js';
 import clientesRoutes from './routes/rutas.js'; // Renombrado para claridad
 import vehiculoRoutes from './routes/vehiculoRoutes.js';
+import repuestosRoutes from './routes/repuestosRoutes.js'
 import transaccionRoutes from './routes/transaccionesroutes.js';
 import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
@@ -34,7 +35,8 @@ app.use(morgan('dev'));
 
 // ==================== RUTAS DE LA API ====================
 app.use('/api/auth', authRoutes);
-app.use('/api/proveedores', proveedoresRoutes)
+app.use('/api/proveedores', proveedoresRoutes);
+app.use('/api/repuestos', repuestosRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
