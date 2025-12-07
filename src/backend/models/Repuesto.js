@@ -20,11 +20,11 @@ const Repuesto = sequelize.define('Repuesto', {
 
     precio_unitario: { 
     type: DataTypes.DECIMAL,
-    allowNull: false, 
+    allowNull: true, 
   },
     stock_inventario: { 
     type: DataTypes.INTEGER,
-    allowNull: false, 
+    allowNull: true, 
   },
 }, {
 

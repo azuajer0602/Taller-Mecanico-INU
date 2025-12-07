@@ -33,19 +33,13 @@ export const obtenerRepuestos = async (req , res) => {
 //modulo de registro
 export const repuestoRegistro = async (req, res) => {
     
-    const { id_repuesto, nombre_repuesto, desc_repuesto, precio_unitario, stock_inventario } = req.body; 
+    const { id_repuesto, nombre_repuesto, desc_repuesto } = req.body; 
 
-    if (!id_repuesto || !nombre_repuesto || !desc_repuesto || !precio_unitario || !stock_inventario ) {
+    if (!id_repuesto || !nombre_repuesto || !desc_repuesto ) {
       return res.status(400).json({ message: 'Se requiere llenar todos los campos.' });
     }
 
-    if (!isNumeric(precio_unitario)) {
-        return res.status(400).json({ message: 'El precio debe contener solo números.' });
-    }
-
-    if (!isNumeric(stock_inventario)) {
-        return res.status(400).json({ message: 'El stock debe contener solo números.' });
-    }
+    
 
     try {
         const existingRepuesto = await Repuesto.findOne({
@@ -65,9 +59,7 @@ export const repuestoRegistro = async (req, res) => {
         const newRepuesto = await Repuesto.create({ 
             id_repuesto: id_repuesto, 
             nombre_repuesto: nombre_repuesto, 
-            desc_repuesto: desc_repuesto, 
-            precio_unitario: precio_unitario, 
-            stock_inventario: stock_inventario
+            desc_repuesto: desc_repuesto
         });
 
         res.status(201).json({ 

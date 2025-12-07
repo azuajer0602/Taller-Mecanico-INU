@@ -19,6 +19,15 @@
         <span class="nav-text">Dashboard</span>
       </router-link>
 
+      <router-link
+        to="/ajustes"
+        class="nav-link"
+        :class="{ active: $route.path === '/ajustes' }"
+      >
+      <span class="nav-icon">⚙️</span>
+        <span class="nav-text">Ajustes</span>
+      </router-link>
+
       <router-link 
         to="/facturacion" 
         class="nav-link"
@@ -45,7 +54,7 @@
       <a href="#Flujo de transacciones"></a>
       <span class="nav-icon"></span>
       <span class="nav-text">Flujo de transacciones</span>
-</router-link>
+      </router-link>
 
       <a href="#servicios" class="nav-link">
         <span class="nav-icon">🛠️</span>

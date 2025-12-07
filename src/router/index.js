@@ -12,15 +12,19 @@ import GestionGastos from "../views/GestionGastos.vue";
 import Flujo_caja from '../views/Flujo_caja.vue'
 import repuestos  from '../views/repuestos.vue'
 import proveedores from '../views/proveedores.vue'
+import compra from '../views/compraRepuestos.vue'
+import Ajustes from'../views/Ajustes.vue'
 
 
 const routes = [
   { path: '/', component: Login },
   { path: '/registro', component: RegistroClientes },
+  { path: '/ajustes',component: Ajustes},
   { path: '/regis_empleados', component: RegistroEmpleados },
   { path: '/sidebar', component:Inicio },
   { path: '/dash', component:Dash },
   { path: '/clientes',component:Clientes},
+  { path: '/compra',component: compra},
   { path: '/registroVehiculo',name: 'Registro',component: VehiculoRegistro},
   { path: '/diagnostico',name: 'Diagnostico',component: DiagnosticoTecnico},
   { path: '/facturacion', component: Facturacion },

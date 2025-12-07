@@ -11,11 +11,13 @@ import transaccionRoutes from './routes/transaccionesroutes.js';
 import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
 import facturaRoutes from './routes/facturaRoutes.js';
-import proveedoresRoutes from './routes/proveedoresRoutes.js'; // ¡NUEVA RUTA PARA FACTURAS!
+import proveedoresRoutes from './routes/proveedoresRoutes.js';
+import Compras from './routes/compraRepuestosRoutes.js' // ¡NUEVA RUTA PARA FACTURAS!
 
 // Configuración de Base de Datos
 import database from './config/database.js';
 import setupAssociations from './models/AssociationsTransacciones.js';
+import setupAsso from './models/associations.js';
 import error from '../red/errors.js';
 
 const { sequelize } = database;
@@ -39,6 +41,7 @@ app.use('/api/proveedores', proveedoresRoutes);
 app.use('/api/repuestos', repuestosRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
+app.use('/api/compras', Compras)
 app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
 app.use('/api/transacciones', transaccionRoutes);
