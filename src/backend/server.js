@@ -60,6 +60,7 @@ async function startServer() {
     // 2. Configurar asociaciones
     console.log('🔄 Configurando asociaciones de modelos...');
     setupAssociations();
+    setupAsso();
     console.log('✅ Asociaciones configuradas.');
     
     // 3. Sincronizar la base de datos
