@@ -7,7 +7,7 @@ import authRoutes from './routes/auth.js';
 import clientesRoutes from './routes/rutas.js'; // Renombrado para claridad
 import vehiculoRoutes from './routes/vehiculoRoutes.js';
 import repuestosRoutes from './routes/repuestosRoutes.js'
-import transaccionRoutes from './routes/transaccionesroutes.js';
+import transaccionRoutes from './routes/transaccionesRoutes.js';
 import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
 import facturaRoutes from './routes/facturaRoutes.js';
@@ -65,7 +65,7 @@ async function startServer() {
     // 3. Sincronizar la base de datos
     console.log('🔄 Sincronizando modelos con la base de datos...');
     // Usar { alter: true } en desarrollo para ajustar tablas sin borrar datos.
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
     console.log('✅ Modelos sincronizados con la base de datos.');
 
     // 4. Iniciar el servidor
