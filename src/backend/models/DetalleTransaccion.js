@@ -40,10 +40,14 @@ const DetalleTransaccion = sequelize.define('DetalleTransaccion', {
     type: DataTypes.DATEONLY,
     allowNull: true
   },
-  // Campo agregado según la imagen
   Tipo_de_pago: {
     type: DataTypes.STRING(40),
     allowNull: false
+  },
+  // --- CAMPO AGREGADO (El que pediste) ---
+  id_tipo_transaccion_fk: {
+    type: DataTypes.INTEGER(11),
+    allowNull: false // Asumo false porque es una FK obligatoria
   }
 }, {
   tableName: 'detalle_transaccion',

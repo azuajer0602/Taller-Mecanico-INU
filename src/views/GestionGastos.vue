@@ -8,143 +8,240 @@ import api from '../backend/services/api.js';
 const transacciones = ref([]);
 const tiposDeOperacion = ref([]); 
 const filtroBusqueda = ref('');
+const saldos = ref({ caja: 0, banco: 0 }); 
 let modalInstancia = null;
 
-// Función auxiliar para obtener fecha local en formato YYYY-MM-DD
 const obtenerFechaLocal = () => {
   const fecha = new Date();
-  const offset = fecha.getTimezoneOffset() * 60000; // Obtener diferencia horaria en milisegundos
+  const offset = fecha.getTimezoneOffset() * 60000; 
   return new Date(fecha - offset).toISOString().split('T')[0];
 };
 
-//modelo del formulario
 const nuevaOperacion = ref({
   descripcion: '',
   monto: '',
-  fecha: obtenerFechaLocal(), // <--- CORREGIDO AQUÍ
+  fecha: obtenerFechaLocal(),
   fechaVencimiento: '', 
   id_tipo_transaccion: '', 
   metodoPago: 'Bolívares'
 });
-const metodosPago = ['Bolívares', 'Divisas', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
+const metodosPago = ['Bolívares', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
 
-// --- COMPUTED: DETECCIÓN AUTOMÁTICA DE TIPO DE CUENTA ---
-
-// Obtenemos el objeto completo de la categoría seleccionada
+// --- COMPUTED ---
 const tipoSeleccionado = computed(() => {
+  if (!tiposDeOperacion.value) return undefined;
   return tiposDeOperacion.value.find(t => 
     t.id_tipo_transaccion === nuevaOperacion.value.id_tipo_transaccion || 
     t.id_tipo_transaccion_pk === nuevaOperacion.value.id_tipo_transaccion
   );
 });
 
-// Detectamos si es cuenta por pagar (Busca palabras clave o tipo Pasivo)
 const esCuentaPorPagar = computed(() => {
   if (!tipoSeleccionado.value) return false;
-  const nombre = tipoSeleccionado.value.nombre_tipo.toLowerCase();
-  const tipo = tipoSeleccionado.value.tipo_cuenta.toUpperCase();
-  // Lógica: Si el nombre dice "pagar" o "proveedor", o es un PASIVO que no sea Capital
+  const nombre = (tipoSeleccionado.value.nombre_tipo || '').toLowerCase();
+  const tipo = (tipoSeleccionado.value.tipo_cuenta || '').toUpperCase();
   return nombre.includes('pagar') || nombre.includes('proveedor') || (tipo === 'PASIVO' && !nombre.includes('capital'));
 });
 
-// Detectamos si es cuenta por cobrar
 const esCuentaPorCobrar = computed(() => {
   if (!tipoSeleccionado.value) return false;
-  const nombre = tipoSeleccionado.value.nombre_tipo.toLowerCase();
-  // Lógica: Si dice "cobrar", "cliente" o "crédito"
+  const nombre = (tipoSeleccionado.value.nombre_tipo || '').toLowerCase();
   return nombre.includes('cobrar') || nombre.includes('cliente') || nombre.includes('credito');
 });
 
-// --- API ---
+const operacionesFiltradas = computed(() => {
+  if (!filtroBusqueda.value) return transacciones.value || [];
+  const texto = filtroBusqueda.value.toLowerCase();
+  if (!transacciones.value) return [];
+  
+  return transacciones.value.filter(t => {
+    const desc = t.detalles?.[0]?.descripcion_detalle || '';
+    const tipo = t.tipo_transaccion?.nombre_tipo || '';
+    return desc.toLowerCase().includes(texto) || tipo.toLowerCase().includes(texto);
+  });
+});
 
+// --- HELPER MONEDA: VERSIÓN A PRUEBA DE FALLOS ---
+const formatoMoneda = (valor) => {
+    let num = Number(valor);
+    if (isNaN(num)) num = 0;
+    let str = num.toFixed(2);
+    let partes = str.split('.');
+    let parteEntera = partes[0];
+    let parteDecimal = partes[1];
+    parteEntera = parteEntera.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `Bs. ${parteEntera},${parteDecimal}`;
+};
+
+// --- HELPER COLOR BADGE (ESTE FALTABA) ---
+const obtenerColorBadge = (tipoCuenta) => {
+  if (!tipoCuenta) return 'bg-secondary';
+  const tipo = tipoCuenta.toUpperCase();
+  if (['INGRESO', 'VENTA', 'COBRO'].includes(tipo)) return 'bg-success';
+  if (['GASTO', 'EGRESO', 'COMPRA', 'PAGO'].includes(tipo)) return 'bg-danger';
+  if (tipo === 'ACTIVO') return 'bg-primary';
+  if (['CAPITAL', 'PATRIMONIO'].includes(tipo)) return 'bg-info text-dark';
+  return 'bg-secondary';
+};
+
+// --- VALIDACIÓN REACTIVA ---
+const mensajeAdvertenciaSaldo = computed(() => {
+  const monto = parseFloat(nuevaOperacion.value.monto) || 0;
+  if (monto <= 0) return null;
+
+  const tipo = tipoSeleccionado.value;
+  if (!tipo) return null;
+  
+  const esSalida = ['GASTO', 'EGRESO', 'COMPRA', 'PAGO', 'PASIVO', 'ACTIVO'].includes((tipo.tipo_cuenta || '').toUpperCase());
+  
+  if (!esSalida || esCuentaPorPagar.value || nuevaOperacion.value.metodoPago === 'Crédito') {
+    return null;
+  }
+
+  const metodo = nuevaOperacion.value.metodoPago;
+  const esCaja = metodo === 'Bolívares';
+  const esBanco = ['Punto de Venta', 'Pago Móvil', 'Transferencia'].includes(metodo);
+
+  if (esCaja && monto > saldos.value.caja) {
+    return `No tienes saldo suficiente (Disp: ${formatoMoneda(saldos.value.caja)})`;
+  }
+
+  if (esBanco && monto > saldos.value.banco) {
+    return `No tienes saldo suficiente (Disp: ${formatoMoneda(saldos.value.banco)})`;
+  }
+
+  return null;
+});
+
+// --- CÁLCULO DE SALDOS ---
+const calcularSaldosActuales = (data) => {
+    let caja = 0;
+    let banco = 0;
+
+    if (!data || !Array.isArray(data)) return;
+
+    data.forEach(t => {
+        const tipoCuenta = (t.tipo_transaccion?.tipo_cuenta || "").toUpperCase().trim(); 
+        const nombreTipo = (t.tipo_transaccion?.nombre_tipo || "").toLowerCase();
+        
+        if (!t.detalles) return;
+
+        const detalleConPago = t.detalles.find(d => d.Tipo_de_pago && d.Tipo_de_pago !== 'N/A');
+        if (!detalleConPago) return; 
+
+        const metodo = (detalleConPago.Tipo_de_pago || "").toLowerCase().trim();
+        const descripcionDetalle = (detalleConPago.descripcion_detalle || "").toLowerCase();
+
+        const esCaja = ['bolívares', 'bolivares', 'efectivo', 'divisa', 'usd', 'caja'].some(m => metodo.includes(m));
+        const esBanco = ['pago móvil', 'pago movil', 'transferencia', 'punto', 'zelle', 'banco', 'tarjeta'].some(m => metodo.includes(m));
+
+        if (!esCaja && !esBanco) return;
+
+        const montoOperacion = t.detalles.reduce((sum, d) => sum + parseFloat(d.debe || 0), 0);
+        let multiplicador = 0;
+
+        if (nombreTipo.includes('cobrar')) multiplicador = 1;
+        else if (nombreTipo.includes('pagar')) multiplicador = -1;
+        else if (['INGRESO', 'VENTA', 'COBRO'].includes(tipoCuenta)) multiplicador = 1; 
+        else if (['GASTO', 'EGRESO', 'COMPRA', 'PAGO', 'PASIVO', 'ACTIVO'].includes(tipoCuenta)) multiplicador = -1;
+        else if (tipoCuenta === 'CAPITAL') {
+            if (nombreTipo.includes('aporte') || descripcionDetalle.includes('aporte')) multiplicador = 1;
+        }
+
+        const montoFinal = montoOperacion * multiplicador;
+        if (esCaja) caja += montoFinal;
+        if (esBanco) banco += montoFinal;
+
+        const textoCompleto = `${nombreTipo} ${descripcionDetalle}`;
+        if (esCaja && multiplicador === -1 && (textoCompleto.includes('deposito') || textoCompleto.includes('banco'))) banco += montoOperacion;
+        if (esBanco && multiplicador === -1 && (textoCompleto.includes('retiro') || textoCompleto.includes('caja'))) caja += montoOperacion;
+    });
+
+    saldos.value = { caja, banco };
+};
+
+// --- API ---
 const cargarTiposOperacion = async () => {
   try {
     const response = await api.get('/tipos-transaccion');
-    if (response.data.success) {
-      tiposDeOperacion.value = response.data.data;
-    }
-  } catch (error) {
-    console.error('Error cargando tipos:', error);
-  }
+    if (response.data.success) tiposDeOperacion.value = response.data.data;
+  } catch (error) { console.error('Error cargando tipos:', error); }
 };
 
 const cargarTransacciones = async () => {
   try {
     const response = await api.get('/transacciones');
-    if (response.data.success) transacciones.value = response.data.data;
+    if (response.data.success) {
+        transacciones.value = response.data.data || [];
+        calcularSaldosActuales(transacciones.value);
+    }
   } catch (error) {}
 };
 
-// --- GUARDAR CON LÓGICA DE VENCIMIENTO ---
+// --- GUARDAR ---
 const guardarOperacion = async () => {
-  if (!nuevaOperacion.value.descripcion || !nuevaOperacion.value.monto || !nuevaOperacion.value.id_tipo_transaccion) {
-    alert('Complete los campos obligatorios');
-    return;
+  if (mensajeAdvertenciaSaldo.value) {
+      alert('⚠️ ' + mensajeAdvertenciaSaldo.value);
+      return; 
   }
 
-  // Validación de fecha de vencimiento si aplica
+  if (!nuevaOperacion.value.descripcion || !nuevaOperacion.value.monto || !nuevaOperacion.value.id_tipo_transaccion) {
+    alert('Complete los campos obligatorios'); return;
+  }
+
   if ((esCuentaPorPagar.value || esCuentaPorCobrar.value) && !nuevaOperacion.value.fechaVencimiento) {
-    alert('Al ser una cuenta por pagar/cobrar, debe indicar la Fecha de Vencimiento.');
-    return;
+    alert('Al ser una cuenta por pagar/cobrar, debe indicar la Fecha de Vencimiento.'); return;
   }
 
   try {
     const tipo = tipoSeleccionado.value;
+    const codigoDelTipo = tipo.id_tipo_transaccion_fk || 'SIN-CODIGO'; 
     const esIngreso = ['INGRESO', 'CAPITAL', 'VENTA'].includes(tipo.tipo_cuenta);
     const monto = parseFloat(nuevaOperacion.value.monto);
     
-    // Variables para las banderas
     const porPagar = esCuentaPorPagar.value ? 1 : 0;
     const porCobrar = esCuentaPorCobrar.value ? 1 : 0;
     const fVencimiento = (porPagar || porCobrar) ? nuevaOperacion.value.fechaVencimiento : null;
+    const pagoSeleccionado = nuevaOperacion.value.metodoPago;
 
     const detallesPayload = [];
 
-    /* LÓGICA DE ASIGNACIÓN DE BANDERAS:
-       Las banderas 'es_cuenta_por_...' se asignan a la línea que lleva la Categoría seleccionada
-       (La deuda o el crédito), no a la línea de Caja/Banco.
-    */
-
     if (esIngreso) {
-        // HABER: Aquí va la categoría (Ej: Ventas, Cuentas por Cobrar)
         detallesPayload.push({
             debe: monto, haber: 0,
-            descripcion_detalle: `${nuevaOperacion.value.descripcion} (${nuevaOperacion.value.metodoPago})`,
-            es_cuenta_por_cobrar: 0, 
-            es_cuenta_por_pagar: 0
+            descripcion_detalle: `${nuevaOperacion.value.descripcion} (${pagoSeleccionado})`,
+            es_cuenta_por_cobrar: 0, es_cuenta_por_pagar: 0,
+            Tipo_de_pago: pagoSeleccionado
         });
         detallesPayload.push({
             debe: 0, haber: monto,
             descripcion_detalle: tipo.nombre_tipo,
-            // AQUI APLICAMOS LA LÓGICA A LA CATEGORIA
-            es_cuenta_por_cobrar: porCobrar, 
-            es_cuenta_por_pagar: porPagar, 
+            es_cuenta_por_cobrar: porCobrar, es_cuenta_por_pagar: porPagar, 
             fecha_vencimiento: fVencimiento,
-            Tipo_de_pago: nuevaOperacion.value.metodoPago
+            Tipo_de_pago: pagoSeleccionado
         });
     } else {
-        // DEBE: Aquí va la categoría (Ej: Gasto, Cuentas por Pagar)
         detallesPayload.push({
             debe: monto, haber: 0,
             descripcion_detalle: tipo.nombre_tipo,
-            // AQUI APLICAMOS LA LÓGICA A LA CATEGORIA
-            es_cuenta_por_cobrar: porCobrar, 
-            es_cuenta_por_pagar: porPagar,
+            es_cuenta_por_cobrar: porCobrar, es_cuenta_por_pagar: porPagar,
             fecha_vencimiento: fVencimiento,
-            Tipo_de_pago: nuevaOperacion.value.metodoPago
+            Tipo_de_pago: pagoSeleccionado
         });
         detallesPayload.push({
             debe: 0, haber: monto,
-            descripcion_detalle: `${nuevaOperacion.value.descripcion} (${nuevaOperacion.value.metodoPago})`,
-            es_cuenta_por_cobrar: 0, 
-            es_cuenta_por_pagar: 0
+            descripcion_detalle: `${nuevaOperacion.value.descripcion} (${pagoSeleccionado})`,
+            es_cuenta_por_cobrar: 0, es_cuenta_por_pagar: 0,
+            Tipo_de_pago: pagoSeleccionado
         });
     }
 
     const payload = {
       id_tipo_transaccion_fk: nuevaOperacion.value.id_tipo_transaccion, 
       fecha_asiento: nuevaOperacion.value.fecha,
-      detalles: detallesPayload 
+      Tipo_de_pago: pagoSeleccionado,
+      codigo_transaccion: codigoDelTipo, 
+      detalles: detallesPayload      
     };
 
     await api.post('/transacciones', payload);
@@ -152,47 +249,41 @@ const guardarOperacion = async () => {
     cerrarModal();
 
   } catch (error) {
-    console.error('Error:', error);
-    alert('Error al guardar.');
+    alert('Error al guardar: ' + (error.response?.data?.message || error.message));
   }
 };
 
-const eliminarOperacion = async (id) => {
-  if (confirm('¿Eliminar?')) {
-    try {
-        await api.delete(`/transacciones/${id}`);
-        await cargarTransacciones();
-    } catch (error) { alert('Error al eliminar'); }
-  }
+const cambiarEstadoTransaccion = async (transaccion) => {
+    const esCxP = transaccion.detalles.some(d => d.es_cuenta_por_pagar == 1);
+    const esCxC = transaccion.detalles.some(d => d.es_cuenta_por_cobrar == 1);
+    
+    let mensajeTipo = '';
+    if (esCxP) mensajeTipo = 'PAGADA (Saldar deuda)';
+    else if (esCxC) mensajeTipo = 'COBRADA (Recibir dinero)';
+    else return;
+
+    const confirmacion = confirm(`¿Cambiar estado a COMPLETADO?\n\nAcción: Marcar como ${mensajeTipo}.`);
+    if (confirmacion) {
+        try {
+            await api.put(`/transacciones/${transaccion.id_transaccion}/estado`);
+            await cargarTransacciones();
+            alert('Estado actualizado.');
+        } catch (error) {
+            console.error(error);
+            alert('Error al actualizar.');
+        }
+    }
 };
 
-// --- UI / HELPERS ---
-const formatoMoneda = (valor) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(valor);
-
-const obtenerColorBadge = (tipoCuenta) => {
-  if (!tipoCuenta) return 'bg-secondary';
-  const tipo = tipoCuenta.toUpperCase();
-  if (['INGRESO', 'VENTA'].includes(tipo)) return 'bg-success';
-  if (['GASTO', 'EGRESO'].includes(tipo)) return 'bg-danger';
-  if (tipo === 'ACTIVO') return 'bg-primary';
-  if (['CAPITAL', 'PATRIMONIO'].includes(tipo)) return 'bg-info text-dark';
-  return 'bg-secondary';
+const esPendiente = (trx) => {
+    if (!trx.detalles) return false;
+    return trx.detalles.some(d => d.es_cuenta_por_pagar == 1 || d.es_cuenta_por_cobrar == 1);
 };
 
 const calcularMontoTotal = (detalles) => {
   if (!detalles || detalles.length === 0) return 0;
   return detalles.reduce((sum, d) => sum + parseFloat(d.debe || 0), 0);
 };
-
-const operacionesFiltradas = computed(() => {
-  if (!filtroBusqueda.value) return transacciones.value;
-  const texto = filtroBusqueda.value.toLowerCase();
-  return transacciones.value.filter(t => {
-    const desc = t.detalles?.[0]?.descripcion_detalle || '';
-    const tipo = t.tipo_transaccion?.nombre_tipo || '';
-    return desc.toLowerCase().includes(texto) || tipo.toLowerCase().includes(texto);
-  });
-});
 
 const abrirModal = () => {
   nuevaOperacion.value = {
@@ -205,7 +296,9 @@ const abrirModal = () => {
 const cerrarModal = () => modalInstancia.hide();
 
 onMounted(async () => {
-  modalInstancia = new Modal(document.getElementById('modalOperacion'));
+  const modalEl = document.getElementById('modalOperacion');
+  if(modalEl) modalInstancia = new Modal(modalEl);
+  
   await cargarTiposOperacion(); 
   await cargarTransacciones(); 
 });
@@ -243,29 +336,48 @@ onMounted(async () => {
                 <th>Descripción</th>
                 <th>Clasificación</th>
                 <th class="text-end pe-4">Monto Total</th>
-                <th class="text-center">Acción</th>
+                <th class="text-center">Estado / Acción</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-if="operacionesFiltradas.length === 0"><td colspan="5" class="text-center py-5 text-muted">No hay datos</td></tr>
+              <tr v-if="!operacionesFiltradas || operacionesFiltradas.length === 0">
+                <td colspan="5" class="text-center py-5 text-muted">No hay datos</td>
+              </tr>
+              
               <tr v-for="t in operacionesFiltradas" :key="t.id_transaccion">
-                <td class="ps-4 text-secondary">{{ new Date(t.fecha_asiento).toLocaleDateString() }}</td>
+                <td class="ps-4 text-secondary">
+                    {{ t.fecha_asiento ? new Date(t.fecha_asiento).toLocaleDateString() : 'N/A' }}
+                </td>
                 <td>
-                    <span class="fw-bold d-block">{{ t.detalles?.[0]?.descripcion_detalle }}</span>
+                    <span class="fw-bold d-block">{{ t.detalles?.[0]?.descripcion_detalle || 'Sin descripción' }}</span>
                     <small class="text-muted">Ref: TRX-{{ t.id_transaccion }}</small>
                 </td>
                 <td>
                     <span class="badge border" :class="obtenerColorBadge(t.tipo_transaccion?.tipo_cuenta)">
                         {{ t.tipo_transaccion?.nombre_tipo || 'General' }}
                     </span>
-                    <span v-if="t.detalles?.some(d => d.es_cuenta_por_pagar)" class="badge bg-warning text-dark ms-1">CxP</span>
-                    <span v-if="t.detalles?.some(d => d.es_cuenta_por_cobrar)" class="badge bg-info text-dark ms-1">CxC</span>
+                    <span v-if="t.detalles?.some(d => d.es_cuenta_por_pagar == 1)" class="badge bg-warning text-dark ms-1">
+                        <i class="fas fa-clock me-1"></i>Por Pagar
+                    </span>
+                    <span v-if="t.detalles?.some(d => d.es_cuenta_por_cobrar == 1)" class="badge bg-info text-dark ms-1">
+                        <i class="fas fa-clock me-1"></i>Por Cobrar
+                    </span>
                 </td>
                 <td class="text-end pe-4 fw-bold">
                     {{ formatoMoneda(calcularMontoTotal(t.detalles)) }}
                 </td>
+                
                 <td class="text-center">
-                    <button @click="eliminarOperacion(t.id_transaccion)" class="btn btn-sm text-danger"><i class="fas fa-trash-alt"></i></button>
+                    <button v-if="esPendiente(t)" 
+                            @click="cambiarEstadoTransaccion(t)" 
+                            class="btn btn-outline-success btn-sm fw-bold shadow-sm"
+                            title="Marcar como Completado / Saldado">
+                        <i class="fas fa-check-circle me-1"></i> Completar
+                    </button>
+
+                    <span v-else class="text-success small fw-bold">
+                        <i class="fas fa-check-double"></i> Procesado
+                    </span>
                 </td>
               </tr>
             </tbody>
@@ -295,9 +407,6 @@ onMounted(async () => {
                   {{ tipo.nombre_tipo }} ({{ tipo.tipo_cuenta }})
                 </option>
               </select>
-              <div class="form-text small text-danger" v-if="tiposDeOperacion.length === 0">
-                 No se cargaron categorías. Revise conexión.
-              </div>
             </div>
 
             <div class="mb-3">
@@ -307,8 +416,15 @@ onMounted(async () => {
             
             <div class="row g-3 mb-3">
               <div class="col-6">
-                <label class="form-label small fw-bold text-muted">Monto ($)</label>
-                <input v-model="nuevaOperacion.monto" type="number" step="0.01" class="form-control fw-bold" required>
+                <label class="form-label small fw-bold text-muted">Monto (Bs.)</label>
+                <input v-model="nuevaOperacion.monto" type="number" step="0.01" 
+                       class="form-control fw-bold" 
+                       :class="{ 'is-invalid': mensajeAdvertenciaSaldo }" 
+                       required>
+                
+                <small v-if="mensajeAdvertenciaSaldo" class="text-danger fw-bold d-block mt-1 animate__animated animate__fadeIn">
+                    {{ mensajeAdvertenciaSaldo }}
+                </small>
               </div>
               <div class="col-6">
                 <label class="form-label small fw-bold text-muted">Fecha Emisión</label>
@@ -320,8 +436,6 @@ onMounted(async () => {
                 <label class="form-label small fw-bold text-dark">
                     <i class="fas fa-calendar-times me-1 text-warning"></i> 
                     Fecha de Vencimiento 
-                    <span v-if="esCuentaPorPagar">(Pago a Proveedor)</span>
-                    <span v-if="esCuentaPorCobrar">(Cobro a Cliente)</span>
                 </label>
                 <input v-model="nuevaOperacion.fechaVencimiento" type="date" class="form-control border-warning" required>
             </div>
@@ -334,7 +448,9 @@ onMounted(async () => {
             </div>
 
             <div class="d-grid">
-              <button type="submit" class="btn btn-primary fw-bold">Guardar</button>
+              <button type="submit" class="btn btn-primary fw-bold" :disabled="!!mensajeAdvertenciaSaldo">
+                  Guardar
+              </button>
             </div>
           </form>
         </div>
@@ -357,5 +473,12 @@ onMounted(async () => {
 }
 @media (max-width: 992px) {
   .main-content { margin-left: 0; padding: 1rem; }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate__fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
 }
 </style>

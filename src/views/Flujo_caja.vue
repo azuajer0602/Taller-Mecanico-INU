@@ -1,29 +1,30 @@
 <script setup>
 import Side from '../components/SidebarComponent.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
-// Importaciones de librerías externas (asegúrate de tenerlas instaladas)
+// Importaciones de librerías externas
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Chart from 'chart.js/auto'
 
 // --- 1. ESTADO REACTIVO (VARIABLES) ---
 
-// Métricas ajustadas a terminología contable (Debe/Haber)
 const metrics = ref({
   debeMes: 0,
   haberMes: 0,
-  balanceMes: 0, // Debe ser 0 si está cuadrado
+  balanceMes: 0, 
   transaccionesMes: 0,
   cuentasPorCobrar: 0,
-  cuentasPorPagar: 0
+  cuentasPorPagar: 0,
+  dineroCaja: 0,    // Se llena si dice "Bolivares"
+  dineroBanco: 0    // Se llena si dice "Transferencia" o "Pago Movil"
 })
 
 const transaccionesRecientes = ref([])
 const cuentasPorCobrar = ref([])
 const cuentasPorPagar = ref([])
 
-// --- 2. COMPUTED PROPERTIES (Protección de datos) ---
+// --- 2. COMPUTED PROPERTIES ---
 
 const transaccionesParaTabla = computed(() => {
   return transaccionesRecientes.value || []
@@ -31,21 +32,19 @@ const transaccionesParaTabla = computed(() => {
 
 // --- 3. FUNCIONES DE ESTILO (UI/COLORES) ---
 
-// Color del badge según la categoría (Ingreso, Gasto, Capital, etc.)
 const getBadgeCategoria = (categoria) => {
   if (!categoria) return 'bg-secondary';
   const cat = categoria.toLowerCase();
   
-  if (cat.includes('ingreso')) return 'bg-success'; // Verde
-  if (cat.includes('gasto') || cat.includes('egreso')) return 'bg-danger'; // Rojo
-  if (cat.includes('activo')) return 'bg-primary'; // Azul
-  if (cat.includes('pasivo')) return 'bg-warning text-dark'; // Amarillo
-  if (cat.includes('capital') || cat.includes('patrimonio')) return 'bg-info text-dark'; // Cyan
+  if (cat.includes('ingreso')) return 'bg-success'; 
+  if (cat.includes('gasto') || cat.includes('egreso')) return 'bg-danger'; 
+  if (cat.includes('activo')) return 'bg-primary'; 
+  if (cat.includes('pasivo')) return 'bg-warning text-dark'; 
+  if (cat.includes('capital') || cat.includes('patrimonio')) return 'bg-info text-dark'; 
   
   return 'bg-secondary';
 }
 
-// Color del badge según el estado
 const getBadgeEstado = (estado) => {
   if (!estado) return 'bg-secondary';
   const est = estado.toLowerCase();
@@ -59,40 +58,28 @@ const getBadgeEstado = (estado) => {
 
 // --- 4. LÓGICA DE NEGOCIO (HELPERS) ---
 
-// Calcula el volumen de la transacción sumando solo el DEBE
 const calcularMontoTransaccion = (detalles) => {
   if (!detalles || detalles.length === 0) return 0
-  // Sumamos la columna DEBE para obtener el tamaño de la operación
-  return detalles.reduce((sum, d) => sum + parseFloat(d.debe || 0), 0)
+  const totalDebe = detalles.reduce((sum, d) => sum + parseFloat(d.debe || 0), 0)
+  const totalHaber = detalles.reduce((sum, d) => sum + parseFloat(d.haber || 0), 0)
+  return Math.max(totalDebe, totalHaber)
 }
 
-// Determina la categoría basada en el ENUM de la BD
 const determinarCategoria = (transaccion) => {
   if (transaccion.tipo_transaccion && transaccion.tipo_transaccion.tipo_cuenta) {
-    const tipo = transaccion.tipo_transaccion.tipo_cuenta; // Ej: 'CAPITAL'
-    // Formatear primera letra mayúscula
+    const tipo = transaccion.tipo_transaccion.tipo_cuenta; 
     return tipo.charAt(0).toUpperCase() + tipo.slice(1).toLowerCase();
   }
   return 'General'
 }
 
-// Busca la mejor descripción posible
 const obtenerDescripcionInteligente = (transaccion) => {
-  // 1. Prioridad: Nombre del Tipo (Ej: "Constitución de Empresa")
   if (transaccion.tipo_transaccion?.nombre_tipo) {
-     return transaccion.tipo_transaccion.nombre_tipo;
+      return transaccion.tipo_transaccion.nombre_tipo;
   }
-  // 2. Si es CAPITAL, buscar aporte en Haber
-  const tipo = transaccion.tipo_transaccion?.tipo_cuenta;
-  if (tipo === 'CAPITAL' && transaccion.detalles) {
-    const detalleCapital = transaccion.detalles.find(d => parseFloat(d.haber) > 0);
-    if (detalleCapital) return detalleCapital.descripcion_detalle;
-  }
-  // 3. Fallback: Primer detalle
   return transaccion.detalles?.[0]?.descripcion_detalle || 'Transacción General';
 }
 
-// Obtiene código contable formateado
 const obtenerCodigoTipo = (transaccion) => {
   if (transaccion.tipo_transaccion) {
     return `${transaccion.tipo_transaccion.codigo_tipo_transaccion || ''} - ${transaccion.tipo_transaccion.nombre_tipo || ''}`
@@ -100,78 +87,151 @@ const obtenerCodigoTipo = (transaccion) => {
   return 'S/C'
 }
 
-// --- 5. CARGA DE DATOS (API) ---
 
+// --- LÓGICA FINAL (CORREGIDO COBRAR vs PAGAR) ---
+const calcularSaldosPorMetodo = (data) => {
+  let caja = 0;
+  let banco = 0;
+
+  if (!data) return;
+
+  data.forEach(t => {
+    // --- 1. DATOS BASE ---
+    const tipoCuenta = (t.tipo_transaccion?.tipo_cuenta || "").toUpperCase().trim(); 
+    const nombreTipo = (t.tipo_transaccion?.nombre_tipo || "").toLowerCase();
+
+    // --- 2. DETECTAR MÉTODO DE PAGO ---
+    const detalleConPago = t.detalles.find(d => d.Tipo_de_pago && d.Tipo_de_pago !== 'N/A');
+    if (!detalleConPago) return; 
+
+    const metodo = detalleConPago.Tipo_de_pago.toLowerCase().trim();
+    const descripcionDetalle = (detalleConPago.descripcion_detalle || "").toLowerCase();
+
+    // --- 3. CLASIFICAR ORIGEN (CAJA vs BANCO) ---
+    const esCaja = ['bolívares', 'bolivares', 'efectivo', 'divisa', 'usd', 'caja'].some(m => metodo.includes(m));
+    const esBanco = ['pago móvil', 'pago movil', 'transferencia', 'punto', 'zelle', 'banco', 'tarjeta', 'débito', 'debito'].some(m => metodo.includes(m));
+
+    if (!esCaja && !esBanco) return;
+
+    // --- 4. CALCULAR MONTO ---
+    const montoOperacion = t.detalles.reduce((sum, d) => sum + parseFloat(d.debe || 0), 0);
+
+    // --- 5. LÓGICA DE SIGNOS (PRIORIDAD A COBRAR/PAGAR) ---
+    let multiplicador = 0;
+
+    // REGLA 1: Si dice explícitamente "COBRAR" en el nombre (ej: "Cuenta por Cobrar", "Cobro Cliente")
+    // Significa que entra dinero -> SUMA
+    if (nombreTipo.includes('cobrar')) {
+        multiplicador = 1;
+    }
+    // REGLA 2: Si dice explícitamente "PAGAR" en el nombre (ej: "Cuenta por Pagar", "Pago Proveedor")
+    // Significa que sale dinero -> RESTA
+    else if (nombreTipo.includes('pagar')) {
+        multiplicador = -1;
+    }
+    // REGLA 3: Si es Ingreso/Venta puro -> SUMA
+    else if (['INGRESO', 'VENTA', 'COBRO'].includes(tipoCuenta)) {
+        multiplicador = 1; 
+    }
+    // REGLA 4: Si es Gasto/Egreso/Activo/Pasivo estándar -> RESTA
+    else if (['GASTO', 'EGRESO', 'COMPRA', 'PAGO', 'PASIVO', 'ACTIVO'].includes(tipoCuenta)) {
+        multiplicador = -1;
+    }
+    // REGLA 5: Capital (Aporte de socios) -> SUMA
+    else if (tipoCuenta === 'CAPITAL') {
+        const esAporte = nombreTipo.includes('aporte') || descripcionDetalle.includes('aporte');
+        if (esAporte) multiplicador = 1;
+    }
+
+    // Aplicamos el signo al monto
+    const montoFinal = montoOperacion * multiplicador;
+
+    // Sumamos o restamos al saldo correspondiente
+    if (esCaja) caja += montoFinal;
+    if (esBanco) banco += montoFinal;
+
+
+    // --- 6. EL "PLUS": LOGICA DE TRASLADOS (DEPÓSITOS Y RETIROS) ---
+    const textoCompleto = `${nombreTipo} ${descripcionDetalle}`;
+
+    // CASO A: DEPÓSITO (Sale de Caja -> Entra a Banco)
+    // Si salió de caja (multiplicador -1) pero dice Depósito -> Sumar al Banco
+    const esDeposito = textoCompleto.includes('deposito') || 
+                       textoCompleto.includes('depósito') || 
+                       textoCompleto.includes('efectivo en banco');
+
+    if (esCaja && multiplicador === -1 && esDeposito) {
+        banco += montoOperacion; 
+    }
+
+    // CASO B: RETIRO (Sale de Banco -> Entra a Caja)
+    // Si salió de banco (multiplicador -1) pero dice Retiro -> Sumar a Caja
+    const esRetiro = textoCompleto.includes('retiro') || 
+                     textoCompleto.includes('reposicion caja') ||
+                     textoCompleto.includes('efectivo en caja');
+
+    if (esBanco && multiplicador === -1 && esRetiro) {
+        caja += montoOperacion; 
+    }
+  });
+
+  metrics.value.dineroCaja = caja;
+  metrics.value.dineroBanco = banco;
+};
 // --- 5. CARGA DE DATOS (API) ---
 
 const cargarDatos = async () => {
   try {
-    console.log('🔄 Iniciando carga de datos...');
     const response = await axios.get('/api/transacciones')
     
     if (response.data && response.data.success) {
       const dataRaw = response.data.data;
       
-      // Mapeo principal para la tabla
       transaccionesRecientes.value = dataRaw.map(t => {
         const tipoCuenta = t.tipo_transaccion?.tipo_cuenta || 'GENERAL';
         let tipoLogico = 'ajuste';
         
-        // Asignamos tipo lógico para uso interno
         if(tipoCuenta === 'INGRESO') tipoLogico = 'ingreso';
         else if(tipoCuenta === 'GASTO') tipoLogico = 'egreso';
         else tipoLogico = 'balance'; 
 
-        // --- LÓGICA DE ESTADO CORREGIDA ---
-        let estadoCalculado = 'completado'; // Por defecto
-        
-        // Buscamos si hay algún detalle que sea deuda o crédito pendiente
+        let estadoCalculado = 'completado'; 
         if (t.detalles) {
           const detallePendiente = t.detalles.find(d => {
-            // Es pendiente si es CxP o CxC Y tiene fecha de vencimiento futura
             const esCredito = d.es_cuenta_por_pagar || d.es_cuenta_por_cobrar;
             if (!esCredito) return false;
-            
-            // Si no tiene fecha vencimiento, asumimos procesado. Si tiene, comparamos.
             if (!d.fecha_vencimiento) return false;
-            
             const vencimiento = new Date(d.fecha_vencimiento);
             const hoy = new Date();
-            // Quitamos la hora para comparar solo fechas
-            vencimiento.setHours(0,0,0,0);
-            hoy.setHours(0,0,0,0);
-            
-            return vencimiento >= hoy; // Si vence hoy o después, está pendiente
+            return vencimiento >= hoy; 
           });
-
-          if (detallePendiente) {
-            estadoCalculado = 'pendiente';
-          }
+          if (detallePendiente) estadoCalculado = 'pendiente';
         }
-        // ----------------------------------
 
         return {
           id: t.id_transaccion,
-       fecha: t.fecha_asiento 
-             ? t.fecha_asiento.split('T')[0].split('-').reverse().join('/') 
-             : 'N/A', 
-      
-      descripcion: obtenerDescripcionInteligente(t),
+          fecha: t.fecha_asiento 
+                ? t.fecha_asiento.split('T')[0].split('-').reverse().join('/') 
+                : 'N/A', 
+          descripcion: obtenerDescripcionInteligente(t),
           tipo: tipoLogico, 
           categoria: determinarCategoria(t),
           monto: calcularMontoTransaccion(t.detalles),
-          estado: estadoCalculado, // <--- Aquí usamos el valor calculado
+          estado: estadoCalculado, 
           referencia: `TRX-${t.id_transaccion}`,
           codigo_contable: obtenerCodigoTipo(t),
-          detalles: t.detalles || []
+          detalles: t.detalles || [],
+          tipo_pago: t.tipo_pago 
         }
       }).slice(0, 10); 
 
       await cargarMetricas(dataRaw)
       await cargarCuentasPorCobrarPagar(dataRaw)
       
+      // Ejecutamos la lógica corregida
+      calcularSaldosPorMetodo(dataRaw)
+      
     } else {
-      console.warn('⚠️ API response success is false');
       transaccionesRecientes.value = [];
     }
   } catch (error) {
@@ -180,33 +240,23 @@ const cargarDatos = async () => {
   }
 }
 
-// Lógica de métricas DEBE vs HABER
 const cargarMetricas = async (data) => {
   const hoy = new Date()
-  const mesActual = hoy.getMonth() // 0 = Enero, 11 = Diciembre
+  const mesActual = hoy.getMonth() 
   const yearActual = hoy.getFullYear()
 
-  // Reset
   metrics.value.debeMes = 0
   metrics.value.haberMes = 0
 
   data.forEach(t => {
     if (!t.fecha_asiento) return;
 
-    // --- CORRECCIÓN DE ZONA HORARIA ---
-    // En lugar de new Date(), leemos el string directo "YYYY-MM-DD"
-    // t.fecha_asiento viene como "2025-12-01" o "2025-12-01T00:00:00.000Z"
-    
-    // 1. Nos aseguramos de tener solo la parte de la fecha YYYY-MM-DD
     const fechaStr = t.fecha_asiento.split('T')[0]; 
-    const partes = fechaStr.split('-'); // ["2025", "12", "01"]
-    
+    const partes = fechaStr.split('-'); 
     const yearTrx = parseInt(partes[0]);
-    const mesTrx = parseInt(partes[1]) - 1; // Restamos 1 porque en JS los meses van de 0 a 11
+    const mesTrx = parseInt(partes[1]) - 1; 
 
-    // Filtrar mes actual comparando números enteros (sin horas ni timezones)
     if (mesTrx === mesActual && yearTrx === yearActual) {
-      // Sumar detalles
       if (t.detalles) {
         t.detalles.forEach(detalle => {
           metrics.value.debeMes += parseFloat(detalle.debe || 0);
@@ -216,7 +266,6 @@ const cargarMetricas = async (data) => {
     }
   });
 
-  // Balance y conteo
   metrics.value.balanceMes = metrics.value.debeMes - metrics.value.haberMes;
   
   metrics.value.transaccionesMes = data.filter(t => {
@@ -227,7 +276,7 @@ const cargarMetricas = async (data) => {
     return mesTrx === mesActual && yearTrx === yearActual;
   }).length;
 }
-// Carga cuentas por cobrar/pagar usando las banderas de la BD
+
 const cargarCuentasPorCobrarPagar = async (data) => {
   cuentasPorCobrar.value = [];
   cuentasPorPagar.value = [];
@@ -264,7 +313,7 @@ const crearObjetoCuenta = (detalle, transaccion, tipoEntidad) => {
   }
 }
 
-// --- VARIABLES GLOBALES PARA GRÁFICOS ---a
+// --- VARIABLES GLOBALES PARA GRÁFICOS ---
 let chartFlujo = null
 let chartCategorias = null
 
@@ -273,38 +322,26 @@ let chartCategorias = null
 const obtenerDatosGraficos = () => {
   const data = transaccionesRecientes.value || [] 
   
-  // A) PREPARAR DATOS LINEAL (Últimos 6 meses)
   const meses = {}
   const hoy = new Date()
   
-  // Inicializar últimos 6 meses vacíos (usando claves "2025-11", "2025-10", etc)
   for (let i = 5; i >= 0; i--) {
-    // Creamos una fecha temporal restando meses
     const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1)
-    
-    // Clave única: Año-MesIndex (Ej: 2025-11 para Diciembre)
-    const key = `${d.getFullYear()}-${d.getMonth()}` 
-    
-    // Etiqueta visual: "dic"
+    const key = `${d.getFullYear()}-${d.getMonth()}`
     const label = d.toLocaleDateString('es-VE', { month: 'short' })
     meses[key] = { label, debe: 0, haber: 0 }
   }
 
-  // Llenar con datos reales
   data.forEach(t => {
-    // ERROR ANTERIOR: const d = new Date(t.fecha) <-- Esto fallaba con "01/12/2025"
-    
-    // NUEVA LÓGICA: Leemos el string "01/12/2025" manualmente
     if (t.fecha && typeof t.fecha === 'string' && t.fecha.includes('/')) {
-        const partes = t.fecha.split('/'); // ["01", "12", "2025"]
+        const partes = t.fecha.split('/'); 
         
         if (partes.length === 3) {
             const anio = parseInt(partes[2]);
-            const mesIndex = parseInt(partes[1]) - 1; // Restamos 1 (Enero es 0)
+            const mesIndex = parseInt(partes[1]) - 1; 
             
             const key = `${anio}-${mesIndex}`;
 
-            // Si esta fecha está dentro de los últimos 6 meses que generamos arriba...
             if (meses[key]) {
                 t.detalles.forEach(det => {
                     meses[key].debe += parseFloat(det.debe || 0)
@@ -318,9 +355,7 @@ const obtenerDatosGraficos = () => {
   const labelsLine = Object.values(meses).map(m => m.label)
   const dataDebe = Object.values(meses).map(m => m.debe)
   const dataHaber = Object.values(meses).map(m => m.haber)
-
-  // B) PREPARAR DATOS DONA (Por Categoría)
-  // (Esta parte estaba bien, se mantiene igual)
+ 
   const categorias = {}
   data.forEach(t => {
     const cat = t.categoria || 'General'
@@ -340,14 +375,13 @@ const inicializarGraficos = () => {
   const ctxFlujo = document.getElementById('chartFlujo')
   const ctxCategorias = document.getElementById('chartCategorias')
   
-  if (!ctxFlujo || !ctxCategorias) return // Seguridad si el DOM no está listo
+  if (!ctxFlujo || !ctxCategorias) return 
 
   if (chartFlujo) chartFlujo.destroy()
   if (chartCategorias) chartCategorias.destroy()
 
   const { labelsLine, dataDebe, dataHaber, labelsDona, dataDona } = obtenerDatosGraficos()
 
-  // 1. Gráfico de Líneas (Debe vs Haber)
   chartFlujo = new Chart(ctxFlujo, {
     type: 'line',
     data: {
@@ -356,7 +390,7 @@ const inicializarGraficos = () => {
         { 
           label: 'Total Debe', 
           data: dataDebe, 
-          borderColor: '#0d6efd', // Azul Bootstrap
+          borderColor: '#0d6efd',
           backgroundColor: 'rgba(13, 110, 253, 0.1)', 
           tension: 0.4, 
           fill: true,
@@ -365,7 +399,7 @@ const inicializarGraficos = () => {
         { 
           label: 'Total Haber', 
           data: dataHaber, 
-          borderColor: '#dc3545', // Rojo Bootstrap
+          borderColor: '#dc3545',
           backgroundColor: 'rgba(220, 53, 69, 0.1)', 
           tension: 0.4, 
           fill: true,
@@ -379,13 +413,12 @@ const inicializarGraficos = () => {
       scales: { 
         y: { 
           beginAtZero: true, 
-          ticks: { callback: value => '$' + value.toLocaleString() } 
+          ticks: { callback: value => 'VES.' + value.toLocaleString() } 
         } 
       }
     }
   })
   
-  // 2. Gráfico de Dona (Categorías)
   chartCategorias = new Chart(ctxCategorias, {
     type: 'doughnut',
     data: {
@@ -404,9 +437,8 @@ const inicializarGraficos = () => {
   })
 }
 
-// --- 3. GENERADORES PARA PDF (Canvas Manual Dinámico) ---
+// --- 3. GENERADORES PARA PDF ---
 
-// Helper para verificar espacio en PDF
 const verificarEspacio = (doc, yActual, altoNecesario, margenInferior = 20) => {
   if (yActual + altoNecesario + margenInferior > doc.internal.pageSize.height) {
     doc.addPage()
@@ -415,7 +447,6 @@ const verificarEspacio = (doc, yActual, altoNecesario, margenInferior = 20) => {
   return yActual
 }
 
-// Generador de Imagen de Líneas para PDF (Recibe datos reales)
 const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
   return new Promise(resolve => {
     const tempCanvas = document.createElement('canvas')
@@ -423,7 +454,6 @@ const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
     tempCanvas.height = 400
     const tempCtx = tempCanvas.getContext('2d')
     
-    // Fondo blanco
     tempCtx.fillStyle = '#ffffff'
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
 
@@ -431,16 +461,14 @@ const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
     const width = tempCanvas.width - margin.left - margin.right
     const height = tempCanvas.height - margin.top - margin.bottom
     
-    const maxValue = Math.max(...dataDebe, ...dataHaber, 100) // 100 min para evitar error div/0
+    const maxValue = Math.max(...dataDebe, ...dataHaber, 100) 
     const xScale = width / (Math.max(labels.length - 1, 1))
     const yScale = height / maxValue
 
-    // Ejes
     tempCtx.strokeStyle = '#cccccc'; tempCtx.lineWidth = 1;
-    tempCtx.beginPath(); tempCtx.moveTo(margin.left, margin.top); tempCtx.lineTo(margin.left, margin.top + height); tempCtx.stroke(); // Y
-    tempCtx.beginPath(); tempCtx.moveTo(margin.left, margin.top + height); tempCtx.lineTo(margin.left + width, margin.top + height); tempCtx.stroke(); // X
+    tempCtx.beginPath(); tempCtx.moveTo(margin.left, margin.top); tempCtx.lineTo(margin.left, margin.top + height); tempCtx.stroke(); 
+    tempCtx.beginPath(); tempCtx.moveTo(margin.left, margin.top + height); tempCtx.lineTo(margin.left + width, margin.top + height); tempCtx.stroke(); 
 
-    // Función auxiliar para dibujar línea
     const drawLine = (data, color) => {
       tempCtx.strokeStyle = color; tempCtx.lineWidth = 3; tempCtx.beginPath();
       data.forEach((value, index) => {
@@ -451,28 +479,24 @@ const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
       tempCtx.stroke()
     }
 
-    drawLine(dataDebe, '#0d6efd') // Azul Debe
-    drawLine(dataHaber, '#dc3545') // Rojo Haber
+    drawLine(dataDebe, '#0d6efd') 
+    drawLine(dataHaber, '#dc3545') 
 
-    // Etiquetas X
     tempCtx.fillStyle = '#666'; tempCtx.font = '12px Arial'; tempCtx.textAlign = 'center'; tempCtx.textBaseline = 'top';
     labels.forEach((label, index) => {
       tempCtx.fillText(label, margin.left + (index * xScale), margin.top + height + 10)
     })
 
-    // Etiquetas Y
     tempCtx.textAlign = 'right'; tempCtx.textBaseline = 'middle';
     for (let i = 0; i <= 5; i++) {
       const value = Math.round((i * maxValue) / 5)
       const y = margin.top + height - (i * height / 5)
-      tempCtx.fillText('$' + value.toLocaleString(), margin.left - 10, y)
+      tempCtx.fillText('VES.' + value.toLocaleString(), margin.left - 10, y)
     }
 
-    // Título y Leyenda
     tempCtx.fillStyle = '#2c3e50'; tempCtx.font = 'bold 16px Arial'; tempCtx.textAlign = 'center';
     tempCtx.fillText('HISTÓRICO DEBE VS HABER', tempCanvas.width / 2, 30)
 
-    // Leyenda manual
     tempCtx.fillStyle = '#0d6efd'; tempCtx.fillRect(tempCanvas.width - 200, 20, 15, 15);
     tempCtx.fillStyle = '#333'; tempCtx.textAlign = 'left'; tempCtx.fillText('Debe', tempCanvas.width - 180, 32);
     
@@ -483,7 +507,6 @@ const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
   })
 }
 
-// Generador de Imagen de Dona para PDF (Recibe datos reales)
 const crearGraficoTortaPDF = async (labels, data) => {
   return new Promise(resolve => {
     const tempCanvas = document.createElement('canvas')
@@ -493,14 +516,13 @@ const crearGraficoTortaPDF = async (labels, data) => {
     tempCtx.fillStyle = '#ffffff'; tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
     const colors = ['#0dcaf0', '#198754', '#ffc107', '#fd7e14', '#6610f2', '#20c997']
-    const total = data.reduce((a, b) => a + b, 0) || 1 // Evitar div/0
+    const total = data.reduce((a, b) => a + b, 0) || 1 
     
     const centerX = tempCanvas.width / 2
     const centerY = tempCanvas.height / 2
     const radius = 120
     let startAngle = 0
 
-    // Dibujar segmentos
     data.forEach((value, index) => {
       const sliceAngle = (2 * Math.PI * value) / total
       tempCtx.beginPath()
@@ -512,11 +534,9 @@ const crearGraficoTortaPDF = async (labels, data) => {
       startAngle += sliceAngle
     })
 
-    // Centro blanco (Dona)
     tempCtx.beginPath(); tempCtx.arc(centerX, centerY, radius * 0.5, 0, 2 * Math.PI); 
     tempCtx.fillStyle = '#ffffff'; tempCtx.fill();
 
-    // Leyenda
     let legendY = 60; const legendX = 20;
     labels.forEach((label, index) => {
       const pct = Math.round((data[index] / total) * 100)
@@ -534,8 +554,7 @@ const crearGraficoTortaPDF = async (labels, data) => {
   })
 }
 
-
-// --- 4. EXPORTAR PDF (CORREGIDO) ---
+// --- 4. EXPORTAR PDF ---
 
 const generarPDF = async () => {
   try {
@@ -543,13 +562,11 @@ const generarPDF = async () => {
     let yPosition = 20
     const { labelsLine, dataDebe, dataHaber, labelsDona, dataDona } = obtenerDatosGraficos()
 
-    // --- ENCABEZADO ---
     doc.setFontSize(18)
     doc.setTextColor(44, 62, 80)
     doc.text('REPORTE FINANCIERO', 105, yPosition, { align: 'center' })
     yPosition += 10
     
-    // Usamos 'ahora' consistentemente
     const ahora = new Date()
     
     doc.setFontSize(10)
@@ -557,7 +574,6 @@ const generarPDF = async () => {
     doc.text(`Generado el: ${ahora.toLocaleDateString('es-ES')} a las ${ahora.toLocaleTimeString('es-ES')}`, 105, yPosition, { align: 'center' })
     yPosition += 20
 
-    // --- TABLA RESUMEN ---
     autoTable(doc, {
       startY: yPosition,
       head: [['Concepto', 'Total Mes', 'Balance']],
@@ -573,7 +589,6 @@ const generarPDF = async () => {
     })
     yPosition = doc.lastAutoTable.finalY + 15
 
-    // --- GRÁFICOS ---
     if (labelsLine.length > 0) {
         yPosition = verificarEspacio(doc, yPosition, 100)
         const imgLine = await crearGraficoLineasPDF(labelsLine, dataDebe, dataHaber)
@@ -588,7 +603,6 @@ const generarPDF = async () => {
         yPosition += 100
     }
 
-    // --- TABLA DETALLADA ---
     yPosition = verificarEspacio(doc, yPosition, 40)
     doc.setFontSize(14)
     doc.setTextColor(0)
@@ -603,7 +617,7 @@ const generarPDF = async () => {
         t.codigo_contable, 
         t.descripcion, 
         t.categoria, 
-        `$${t.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
+        `VES.${t.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
         t.referencia
       ]),
       styles: { fontSize: 8 },
@@ -613,10 +627,8 @@ const generarPDF = async () => {
       }
     })
 
-    // --- GUARDAR ARCHIVO (CORREGIDO) ---
-    const fechaStr = ahora.toISOString().split('T')[0] // YYYY-MM-DD
-    // Aquí estaba el error, cambiamos 'now' por 'ahora'
-    const horaStr = ahora.toTimeString().split(' ')[0].replace(/:/g, '-') // HH-MM-SS
+    const fechaStr = ahora.toISOString().split('T')[0] 
+    const horaStr = ahora.toTimeString().split(' ')[0].replace(/:/g, '-') 
     
     const nombreArchivo = `reporte_contable_${fechaStr}_${horaStr}.pdf`
     
@@ -627,24 +639,24 @@ const generarPDF = async () => {
     alert('Hubo un error al crear el PDF. Revisa la consola.')
   }
 }
-// --- Modificar onMounted para que inicialice gráficos al cargar ---
+
+const generarExcel = () => {
+  // Lógica de exportación Excel pendiente o simple
+  alert("Funcionalidad Excel pendiente de implementación completa");
+}
+
 onMounted(async () => {
   await cargarDatos()
-  // Pequeño delay para asegurar que el DOM del canvas existe
   setTimeout(() => {
     inicializarGraficos()
   }, 100)
 })
 </script>
 
-
 <template>
   <Side />
 
-
-  <!-- Contenido Principal -->
   <div class="main-content">
-    <!-- Header -->
     <header class="dashboard-header">
       <div class="header-left">
         <h1>Módulo Contable y Financiero</h1>
@@ -658,7 +670,44 @@ onMounted(async () => {
       </div>
     </header>
 
-    <!-- Métricas Principales -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <div class="metric-card border-start border-success border-4">
+          <div class="metric-icon bg-success text-white">
+            <i class="fas fa-cash-register"></i>
+          </div>
+          <div class="metric-info w-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <h3 class="text-success fw-bold mb-0">DINERO EN CAJA (EFECTIVO)</h3>
+              <span class="badge bg-success bg-opacity-10 text-success px-3">Disponible</span>
+            </div>
+            <p class="metric-value text-dark mt-2 mb-0">
+              VES.{{ metrics.dineroCaja.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+            </p>
+            <small class="text-muted">Calculado según movimientos en efectivo</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="metric-card border-start border-primary border-4">
+          <div class="metric-icon bg-primary text-white">
+            <i class="fas fa-university"></i>
+          </div>
+          <div class="metric-info w-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <h3 class="text-primary fw-bold mb-0">DINERO EN BANCOS</h3>
+              <span class="badge bg-primary bg-opacity-10 text-primary px-3">Bancos Digitales</span>
+            </div>
+            <p class="metric-value text-dark mt-2 mb-0">
+              VES.{{ metrics.dineroBanco.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+            </p>
+            <small class="text-muted">Pago Móvil, Transferencias, Puntos</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
   <div class="row g-3 mb-4">
       
       <div class="col-md-3">
@@ -669,7 +718,7 @@ onMounted(async () => {
           <div class="metric-info">
             <h3 class="text-primary fw-bold">TOTAL DEBE (MES)</h3>
             <p class="metric-value text-dark">
-              ${{ metrics.debeMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              VES.{{ metrics.debeMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <p class="metric-change text-muted small">
               <i class="fas fa-info-circle me-1"></i>Movimiento Deudor
@@ -686,7 +735,7 @@ onMounted(async () => {
           <div class="metric-info">
             <h3 class="text-danger fw-bold">TOTAL HABER (MES)</h3>
             <p class="metric-value text-dark">
-              ${{ metrics.haberMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              VES.{{ metrics.haberMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <p class="metric-change text-muted small">
               <i class="fas fa-info-circle me-1"></i>Movimiento Acreedor
@@ -706,7 +755,7 @@ onMounted(async () => {
               CUADRE CONTABLE
             </h3>
             <p class="metric-value text-dark">
-              ${{ metrics.balanceMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              VES.{{ metrics.balanceMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <p class="metric-change small" :class="metrics.balanceMes === 0 ? 'text-success' : 'text-warning'">
               <i class="fas" :class="metrics.balanceMes === 0 ? 'fa-check' : 'fa-exclamation-triangle'"></i>
@@ -730,9 +779,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Gráficos y Cuentas -->
     <div class="row g-3 mb-4">
-      <!-- Gráfico de Flujo -->
       <div class="col-lg-8">
         <div class="card h-100">
           <div class="card-header bg-primary text-white">
@@ -746,7 +793,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Distribución por Categorías -->
       <div class="col-lg-4">
         <div class="card h-100">
           <div class="card-header bg-success text-white">
@@ -761,9 +807,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Cuentas por Cobrar y Pagar -->
     <div class="row g-3 mb-4">
-      <!-- Cuentas por Cobrar -->
       <div class="col-lg-6">
         <div class="card h-100">
           <div class="card-header bg-warning text-dark">
@@ -780,7 +824,7 @@ onMounted(async () => {
                     <p class="mb-1 text-muted small">{{ cuenta.descripcion }}</p>
                   </div>
                   <div class="text-end">
-                    <strong class="text-success">${{ cuenta.monto.toLocaleString() }}</strong>
+                    <strong class="text-success">VES.{{ cuenta.monto.toLocaleString() }}</strong>
                     <div class="mt-1">
                       <small class="text-muted">Vence: {{ cuenta.fechaVencimiento }}</small>
                     </div>
@@ -799,7 +843,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Cuentas por Pagar -->
       <div class="col-lg-6">
         <div class="card h-100">
           <div class="card-header bg-danger text-white">
@@ -816,7 +859,7 @@ onMounted(async () => {
                     <p class="mb-1 text-muted small">{{ cuenta.descripcion }}</p>
                   </div>
                   <div class="text-end">
-                    <strong class="text-danger">${{ cuenta.monto.toLocaleString() }}</strong>
+                    <strong class="text-danger">VES.{{ cuenta.monto.toLocaleString() }}</strong>
                     <div class="mt-1">
                       <small class="text-muted">Vence: {{ cuenta.fechaVencimiento }}</small>
                     </div>
@@ -836,8 +879,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Transacciones Recientes CON CÓDIGO CONTABLE -->
-  <div class="card mb-4">
+    <div class="card mb-4">
   <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
     <h5 class="card-title mb-0">
       <i class="fas fa-list me-2"></i>Transacciones Recientes
@@ -899,7 +941,7 @@ onMounted(async () => {
         'text-danger': trx.tipo === 'egreso',
         'text-dark': trx.tipo === 'balance'
       }" class="fs-6">
-        ${{ trx.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+        VES.{{ trx.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
       </strong>
     </td>
     
@@ -923,7 +965,6 @@ onMounted(async () => {
   </div>
 </div>
 
-    <!-- Botones de Exportación -->
     <div class="d-flex justify-content-end gap-2 mt-4">
       <button @click="generarPDF" class="btn btn-danger">
         <i class="fas fa-file-pdf me-2"></i> Exportar PDF con Gráficos
@@ -933,7 +974,6 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- Canvas ocultos para PDF -->
     <div style="position: absolute; left: -9999px; top: -9999px; width: 800px; height: 400px;">
       <canvas id="chartFlujoPDF" width="800" height="400"></canvas>
       <canvas id="chartCategoriasPDF" width="800" height="400"></canvas>
