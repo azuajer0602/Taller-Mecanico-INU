@@ -10,8 +10,7 @@ const CompraRepuesto = sequelize.define('CompraRepuesto', {
 
     precio_unitario_compra: { 
     type: DataTypes.DECIMAL,
-    allowNull: false,
-    unique: true, 
+    allowNull: false, 
   },
 
     fecha_compra: { 

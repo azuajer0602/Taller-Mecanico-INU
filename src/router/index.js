@@ -16,6 +16,7 @@ import compra from '../views/compraRepuestos.vue'
 import Ajustes from'../views/Ajustes.vue'
 
 
+
 const routes = [
   { path: '/', component: Login },
   { path: '/registro', component: RegistroClientes },

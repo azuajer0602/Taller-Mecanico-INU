@@ -28,6 +28,15 @@
         <span class="nav-text">Ajustes</span>
       </router-link>
 
+      <router-link
+        to="/compra"
+        class="nav-link"
+        :class="{ active: $route.path === '/compra' }"
+      >
+      <span class="nav-icon">⚙️</span>
+        <span class="nav-text">Compra Repuestos</span>
+      </router-link>
+
       <router-link 
         to="/facturacion" 
         class="nav-link"

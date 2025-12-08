@@ -151,8 +151,8 @@ onMounted(() => {
                 <th scope="col">Nombre Repuesto</th>
                 <th scope="col">Descripcion</th>
                 <th scope="col">Precio</th>
-                <th scope="col">Cantidad Disp</th>
-                <th scope="col">Acciones</th>
+                <th scope="col">Cantidad Disponible</th>
+                <th scope="col"></th>
               </tr>
             </thead>
             <tbody>
@@ -163,12 +163,7 @@ onMounted(() => {
                 <td>{{ rep.precio_unitario }}</td>
                 <td>{{ rep.stock_inventario }}</td>
                 <td>
-                  <button class="btn btn-sm btn-warning me-2" @click="editarProveedor(rep)">
-                    <i class="fas fa-edit"></i> Editar
-                  </button>
-                  <button class="btn btn-sm btn-danger" @click="eliminarRepuesto(rep.id_repuesto)">
-                    <i class="fas fa-trash"></i> Eliminar
-                  </button>
+                  
                 </td>
               </tr>
             </tbody>

@@ -11,8 +11,7 @@ const Empleado = sequelize.define('Empleado', {
   },
   usuario: { 
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: true, 
+    allowNull: false, 
   },
   contrasena: { 
     type: DataTypes.STRING,
@@ -29,7 +28,6 @@ const Empleado = sequelize.define('Empleado', {
   cedula_emp: { 
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true, 
   },
   cargo: { 
     type: DataTypes.STRING,
