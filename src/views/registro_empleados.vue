@@ -192,9 +192,8 @@ onMounted(() => {
         >
             <option value="" disabled>Selecciona un Cargo</option> 
             
-            <option value="Mecanico">Mecánico</option>
+            <option value="Mecanico">mecanico</option>
             <option value="Administrador">Administrador</option>
-            <option value="Gerente">Gerente</option>
         </select>
         </div>
     <div class="col-md-6">

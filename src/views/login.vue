@@ -2,11 +2,14 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 
 const usuario = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const router = useRouter(); 
+const authStore = useAuthStore();
+
 const handleLogin = async () => {
 
   errorMessage.value = '';
@@ -22,10 +25,14 @@ const handleLogin = async () => {
       password: password.value,
     });
     if (response.data.message === 'Login exitoso') {
-      console.log('Login Exitoso!', response.data.empleado);
+      const { token, empleado } = response.data; // 💡 DESESTRUCTURACIÓN CORRECTA
+      
+      console.log('Login Exitoso!', empleado);
 
-      router.push('/dash');
-    }
+      authStore.setAuthData(empleado, token); // Ahora están definidos
+
+      router.push('/dash');
+    }
 
   } catch (error) {
 

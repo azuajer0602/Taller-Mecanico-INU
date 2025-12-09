@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 09-12-2025 a las 15:57:07
+-- Tiempo de generación: 10-12-2025 a las 00:40:17
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -85,7 +85,11 @@ CREATE TABLE `compra_repuesto` (
 --
 
 INSERT INTO `compra_repuesto` (`id_compra_repuesto`, `precio_unitario_compra`, `fecha_compra`, `cantidad_comprada`, `id_proveedor`, `id_repuesto`) VALUES
-(1, 200, '2025-12-09 00:00:00', 10, 1, 14);
+(1, 200, '2025-12-09 00:00:00', 10, 1, 14),
+(3, 300, '2025-12-09 00:00:00', 10, 1, 14),
+(4, 150, '2025-12-09 00:00:00', 10, 1, 16),
+(5, 130, '2025-12-09 00:00:00', 6, 1, 16),
+(7, 200, '2025-12-09 00:00:00', 10, 1, 14);
 
 -- --------------------------------------------------------
 
@@ -182,7 +186,19 @@ INSERT INTO `detalle_transaccion` (`id_detalle`, `id_transaccion`, `debe`, `habe
 (112, 61, 2000.00, 0.00, 'Mercancías', 0, 0, NULL, 'Bolívares', 5),
 (113, 61, 0.00, 2000.00, 'Compra de amortiguadores (Bolívares)', 0, 0, NULL, 'Bolívares', 5),
 (114, 62, 7000000.00, 0.00, 'aporte de socios (Bolívares)', 0, 0, NULL, 'Bolívares', 20),
-(115, 62, 0.00, 7000000.00, 'Capital social en acciones', 0, 0, NULL, 'Bolívares', 20);
+(115, 62, 0.00, 7000000.00, 'Capital social en acciones', 0, 0, NULL, 'Bolívares', 20),
+(116, 63, 2000.00, 0.00, 'Mercancías', 0, 0, NULL, 'Bolívares', 5),
+(117, 63, 0.00, 2000.00, 'Compra de amortiguadores (Bolívares)', 0, 0, NULL, 'Bolívares', 5),
+(118, 64, 3000.00, 0.00, 'Mercancías', 0, 0, NULL, 'Bolívares', 5),
+(119, 64, 0.00, 3000.00, 'Compra de amortiguadores (Bolívares)', 0, 0, NULL, 'Bolívares', 5),
+(120, 65, 1500.00, 0.00, 'Mercancías', 0, 0, NULL, 'Bolívares', 5),
+(121, 65, 0.00, 1500.00, 'Compra de bujias (Bolívares)', 0, 0, NULL, 'Bolívares', 5),
+(122, 66, 780.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
+(123, 66, 0.00, 780.00, 'Compra de bujia (Bolívares)', 0, 0, NULL, 'Bolívares', 25),
+(124, 67, 2000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
+(125, 67, 0.00, 2000.00, 'Compra de bujia (Bolívares)', 0, 0, NULL, 'Bolívares', 25),
+(126, 68, 2000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
+(127, 68, 0.00, 2000.00, 'Compra de amortiguador (Bolívares)', 0, 0, NULL, 'Bolívares', 25);
 
 -- --------------------------------------------------------
 
@@ -220,7 +236,8 @@ CREATE TABLE `empleado` (
 --
 
 INSERT INTO `empleado` (`id_empleado`, `usuario`, `contrasena`, `nombre_emp`, `apellido_emp`, `cedula_emp`, `cargo`, `fecha_contratacion`, `sueldo_base`) VALUES
-(31, 'rei', '1234', 'reimil', 'azuaje', '31663399', 'Administrador', '2025-11-20 00:00:00', 5000);
+(31, 'rei', '1234', 'reimil', 'azuaje', '31663399', 'Administrador', '2025-11-20 00:00:00', 5000),
+(32, 'yejo', '1234', 'Yelians', 'Rodriguez', '30942261', 'Mecanico', '2025-12-09 00:00:00', 40);
 
 -- --------------------------------------------------------
 
@@ -355,7 +372,8 @@ CREATE TABLE `repuesto` (
 --
 
 INSERT INTO `repuesto` (`id_repuesto`, `nombre_repuesto`, `precio_unitario`, `stock_inventario`, `desc_repuesto`) VALUES
-(14, 'amortiguador', 200, 24, 'pieza para amotiguacion');
+(14, 'amortiguador', 200, 44, 'pieza para amotiguacion'),
+(16, 'bujia', 130, 16, 'grado 2');
 
 -- --------------------------------------------------------
 
@@ -468,7 +486,13 @@ INSERT INTO `transacciones` (`id_transaccion`, `id_tipo_transaccion_fk`, `fecha_
 (59, 18, '2025-12-08'),
 (60, 37, '2025-12-08'),
 (61, 5, '2025-12-09'),
-(62, 20, '2025-12-09');
+(62, 20, '2025-12-09'),
+(63, 5, '2025-12-09'),
+(64, 5, '2025-12-09'),
+(65, 5, '2025-12-09'),
+(66, 25, '2025-12-09'),
+(67, 25, '2025-12-09'),
+(68, 25, '2025-12-09');
 
 -- --------------------------------------------------------
 
@@ -508,14 +532,6 @@ ALTER TABLE `cliente`
 --
 ALTER TABLE `compra_repuesto`
   ADD PRIMARY KEY (`id_compra_repuesto`),
-  ADD UNIQUE KEY `precio_unitario_compra` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_2` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_3` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_4` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_5` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_6` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_7` (`precio_unitario_compra`),
-  ADD UNIQUE KEY `precio_unitario_compra_8` (`precio_unitario_compra`),
   ADD KEY `fk_proveedor` (`id_proveedor`),
   ADD KEY `fk_repuesto` (`id_repuesto`);
 
@@ -706,19 +722,19 @@ ALTER TABLE `cliente`
 -- AUTO_INCREMENT de la tabla `compra_repuesto`
 --
 ALTER TABLE `compra_repuesto`
-  MODIFY `id_compra_repuesto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id_compra_repuesto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_transaccion`
 --
 ALTER TABLE `detalle_transaccion`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=128;
 
 --
 -- AUTO_INCREMENT de la tabla `empleado`
 --
 ALTER TABLE `empleado`
-  MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT de la tabla `facturas`
@@ -766,7 +782,7 @@ ALTER TABLE `tipo_transaccion`
 -- AUTO_INCREMENT de la tabla `transacciones`
 --
 ALTER TABLE `transacciones`
-  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=63;
+  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- Restricciones para tablas volcadas

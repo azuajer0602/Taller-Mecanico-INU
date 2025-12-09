@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from 'vue';
+import { useAuthStore } from '../stores/auth';
+const authStore = useAuthStore();
 
 // Estado para controlar si el sidebar está abierto o cerrado en móvil
 const isSidebarOpen = ref(false);
@@ -11,6 +13,16 @@ const toggleSidebar = () => {
 const closeSidebar = () => {
   isSidebarOpen.value = false;
 };
+
+const handleLogout = () => {
+  authStore.logout();
+   this.user = null;
+  this.token = null;
+  localStorage.clear();
+   setAuthHeader(null);
+  router.push('/');
+}
+
 </script>
 
 <template>
@@ -39,31 +51,42 @@ const closeSidebar = () => {
           <span class="nav-icon">🚗</span>
           <span class="nav-text">Dashboard</span>
         </router-link>
-
+        <li v-if="!authStore.isMecanico">
         <router-link to="/ajustes" class="nav-link" :class="{ active: $route.path === '/ajustes' }" @click="closeSidebar">
           <span class="nav-icon">⚙️</span>
           <span class="nav-text">Ajustes</span>
         </router-link>
+        </li>
 
+        <li v-if="!authStore.isMecanico">
         <router-link to="/compra" class="nav-link" :class="{ active: $route.path === '/compra' }" @click="closeSidebar">
           <span class="nav-icon">🛒</span>
           <span class="nav-text">Compra Repuestos</span>
         </router-link>
+        </li>
 
+
+        <li v-if="!authStore.isMecanico">
         <router-link to="/facturacion" class="nav-link" :class="{ active: $route.path === '/facturacion' }" @click="closeSidebar">
           <span class="nav-icon">🧾</span>
           <span class="nav-text">Facturación</span>
         </router-link>
+        </li>
+
+        <li v-if="!authStore.isMecanico">
 
         <router-link to="/gestion-gastos" class="nav-link" :class="{ active: $route.path === '/gestion-gastos' }" @click="closeSidebar">
           <span class="nav-icon">💸</span>
           <span class="nav-text">Gestión y Gastos</span>
         </router-link>
+        </li>
+        <li v-if="!authStore.isMecanico">
         
         <router-link to="/flujo-caja" class="nav-link" :class="{ active: $route.path === '/flujo-caja' }" @click="closeSidebar">
           <span class="nav-icon">📈</span>
           <span class="nav-text">Flujo de transacciones</span>
         </router-link>
+        </li>
 
         <a href="#servicios" class="nav-link" @click="closeSidebar">
           <span class="nav-icon">🛠️</span>
@@ -75,22 +98,26 @@ const closeSidebar = () => {
           <span class="nav-text">Clientes</span>
         </router-link>
 
-        
 
+        <li v-if="!authStore.isMecanico">
         <router-link to="/regis_empleados" class="nav-link" :class="{ active: $route.path === '/regis_empleados' }" @click="closeSidebar">
           <span class="nav-icon">👔</span>
           <span class="nav-text">Empleados</span>
         </router-link>
+        </li>
         
         <router-link to="/registroVehiculo" class="nav-link" :class="{ active: $route.path === '/registroVehiculo' }" @click="closeSidebar">
           <span class="nav-icon">🚗</span>
           <span class="nav-text">Registro de Vehículos</span>
         </router-link>
 
+
+        <li v-if="!authStore.isMecanico">
         <router-link to="/proveedores" class="nav-link" :class="{ active: $route.path === '/proveedores' }" @click="closeSidebar">
           <span class="nav-icon">🚚</span>
           <span class="nav-text">Proveedores</span>
         </router-link>
+        </li>
 
         <router-link to="/repuestos" class="nav-link" :class="{ active: $route.path === '/repuestos' }" @click="closeSidebar">
           <span class="nav-icon">📦</span>
@@ -107,10 +134,17 @@ const closeSidebar = () => {
           <span class="nav-text">Contacto</span>
         </a>
 
-        <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }" @click="closeSidebar">
-          <span class="nav-icon">🚪</span>
-          <span class="nav-text">Salir</span>
-        </router-link>
+        <router-link 
+    to="/" 
+    class="nav-link" 
+    :class="{ active: $route.path === '/' }" 
+    
+    @click.prevent="handleLogout(); closeSidebar()" 
+    
+>
+    <span class="nav-icon">🚪</span>
+    <span class="nav-text">Salir</span>
+</router-link>
       </nav>
     </div>
   </div>

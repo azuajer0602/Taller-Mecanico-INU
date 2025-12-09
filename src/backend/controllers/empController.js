@@ -1,6 +1,9 @@
 
 import Empleado from '../models/Empleado.js'; 
 import { Op } from 'sequelize';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'admin1234';
 
 const isNumeric = (value) => {
     if (value === null || value === undefined) return false;
@@ -59,41 +62,47 @@ export const obtenerTodos = async (req , res) => {
 
 
 //modulo de login
-
 export const login = async (req, res) => {
-
-  const { usuario, password } = req.body; 
-
-  if (!usuario || !password) {
-    return res.status(400).json({ message: 'Se requiere usuario y contraseña.' });
-  }
-
-  try {
-
-    const empleado = await Empleado.findOne({ where: { usuario } }); 
-
-    if (!empleado) {
-      return res.status(401).json({ message: 'Credenciales inválidas.' });
+    const { usuario, password } = req.body; 
+    if (!usuario || !password) {
+        return res.status(400).json({ message: 'Se requiere usuario y contraseña.' });
     }
 
-    const isMatch = (password === empleado.contrasena);
+    try {
+        const empleado = await Empleado.findOne({ where: { usuario } }); 
 
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Credenciales inválidas.' });
+        if (!empleado) {
+            return res.status(401).json({ message: 'Credenciales inválidas.' });
+        }
+        const isMatch = (password === empleado.contrasena); 
+
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Credenciales inválidas.' });
+        }
+
+        const token = jwt.sign(
+            { 
+                id: empleado.id_empleado, 
+                usuario: empleado.usuario, 
+                cargo: empleado.cargo 
+            }, 
+            JWT_SECRET, 
+            { expiresIn: '10m' } 
+        );
+        res.json({ 
+            message: 'Login exitoso', 
+            token: token, 
+            empleado: { 
+                id: empleado.id_empleado, 
+                usuario: empleado.usuario,
+                cargo: empleado.cargo 
+            } 
+        });
+
+    } catch (error) {
+        console.error('Error en el login:', error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
     }
-
-    res.json({ 
-        message: 'Login exitoso', 
-        empleado: { 
-            id: empleado.id_empleado, 
-            usuario: empleado.usuario,
-        } 
-    });
-
-  } catch (error) {
-    console.error('Error en el login:', error);
-    res.status(500).json({ message: 'Error del servidor.' });
-  }
 };
 
 
