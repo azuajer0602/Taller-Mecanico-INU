@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 09-12-2025 a las 04:33:44
+-- Tiempo de generación: 09-12-2025 a las 15:57:07
 -- Versión del servidor: 10.4.32-MariaDB
--- Versión de PHP: 8.0.30
+-- Versión de PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -79,6 +79,13 @@ CREATE TABLE `compra_repuesto` (
   `id_proveedor` int(11) NOT NULL,
   `id_repuesto` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `compra_repuesto`
+--
+
+INSERT INTO `compra_repuesto` (`id_compra_repuesto`, `precio_unitario_compra`, `fecha_compra`, `cantidad_comprada`, `id_proveedor`, `id_repuesto`) VALUES
+(1, 200, '2025-12-09 00:00:00', 10, 1, 14);
 
 -- --------------------------------------------------------
 
@@ -171,7 +178,11 @@ INSERT INTO `detalle_transaccion` (`id_detalle`, `id_transaccion`, `debe`, `habe
 (108, 59, 5000.00, 0.00, 'Cuentas por pagar', 0, 0, '2025-12-15', 'Bolívares', 18),
 (109, 59, 0.00, 5000.00, 'Pago de administradora mes de julio (Bolívares)', 0, 0, NULL, 'Bolívares', 18),
 (110, 60, 15350.00, 0.00, 'Cuentas por Cobrar a Clientes', 0, 0, '2025-12-30', 'Pago Móvil', 37),
-(111, 60, 0.00, 15350.00, 'Reparacion de vehiculo A cliente Juan Perez  (Pago Móvil)', 0, 0, NULL, 'Pago Móvil', 37);
+(111, 60, 0.00, 15350.00, 'Reparacion de vehiculo A cliente Juan Perez  (Pago Móvil)', 0, 0, NULL, 'Pago Móvil', 37),
+(112, 61, 2000.00, 0.00, 'Mercancías', 0, 0, NULL, 'Bolívares', 5),
+(113, 61, 0.00, 2000.00, 'Compra de amortiguadores (Bolívares)', 0, 0, NULL, 'Bolívares', 5),
+(114, 62, 7000000.00, 0.00, 'aporte de socios (Bolívares)', 0, 0, NULL, 'Bolívares', 20),
+(115, 62, 0.00, 7000000.00, 'Capital social en acciones', 0, 0, NULL, 'Bolívares', 20);
 
 -- --------------------------------------------------------
 
@@ -344,7 +355,7 @@ CREATE TABLE `repuesto` (
 --
 
 INSERT INTO `repuesto` (`id_repuesto`, `nombre_repuesto`, `precio_unitario`, `stock_inventario`, `desc_repuesto`) VALUES
-(14, 'amortiguador', 20, 14, 'pieza para amotiguacion');
+(14, 'amortiguador', 200, 24, 'pieza para amotiguacion');
 
 -- --------------------------------------------------------
 
@@ -455,7 +466,9 @@ INSERT INTO `transacciones` (`id_transaccion`, `id_tipo_transaccion_fk`, `fecha_
 (57, 22, '2025-12-08'),
 (58, 3, '2025-12-08'),
 (59, 18, '2025-12-08'),
-(60, 37, '2025-12-08');
+(60, 37, '2025-12-08'),
+(61, 5, '2025-12-09'),
+(62, 20, '2025-12-09');
 
 -- --------------------------------------------------------
 
@@ -693,13 +706,13 @@ ALTER TABLE `cliente`
 -- AUTO_INCREMENT de la tabla `compra_repuesto`
 --
 ALTER TABLE `compra_repuesto`
-  MODIFY `id_compra_repuesto` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_compra_repuesto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_transaccion`
 --
 ALTER TABLE `detalle_transaccion`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=112;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
 
 --
 -- AUTO_INCREMENT de la tabla `empleado`
@@ -753,7 +766,7 @@ ALTER TABLE `tipo_transaccion`
 -- AUTO_INCREMENT de la tabla `transacciones`
 --
 ALTER TABLE `transacciones`
-  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61;
+  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=63;
 
 --
 -- Restricciones para tablas volcadas
