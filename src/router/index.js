@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/login.vue'
-import RegistroClientes from '../views/registro_clientes.vue'
 import RegistroEmpleados from '../views/registro_empleados.vue'
 import Inicio from '../components/SidebarComponent.vue'
 import Dash from '../components/DashboardComponent.vue'
@@ -19,7 +18,6 @@ import Ajustes from'../views/Ajustes.vue'
 
 const routes = [
   { path: '/', component: Login },
-  { path: '/registro', component: RegistroClientes },
   { path: '/ajustes',component: Ajustes},
   { path: '/regis_empleados', component: RegistroEmpleados },
   { path: '/sidebar', component:Inicio },

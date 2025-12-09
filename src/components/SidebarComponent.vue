@@ -75,10 +75,7 @@ const closeSidebar = () => {
           <span class="nav-text">Clientes</span>
         </router-link>
 
-        <router-link to="/registro" class="nav-link" :class="{ active: $route.path === '/registro' }" @click="closeSidebar">
-          <span class="nav-icon">👤</span>
-          <span class="nav-text">Registro Clientes</span>
-        </router-link>
+        
 
         <router-link to="/regis_empleados" class="nav-link" :class="{ active: $route.path === '/regis_empleados' }" @click="closeSidebar">
           <span class="nav-icon">👔</span>

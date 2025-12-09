@@ -129,27 +129,27 @@ onMounted(() => {
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="id_repuesto" class="form-label">ID Repuesto</label>
-              <input v-model="repuesto.id_repuesto" type="text" class="form-control" id="id_provedor" placeholder="Ej: PROV001" required />
+              <input v-model="repuesto.id_repuesto" type="text" class="form-control" id="id_provedor" placeholder="Ej: 03" required />
             </div>
             <div class="col-md-6">
               <label for="nombre_repuesto" class="form-label">Nombre repuesto</label>
-              <input v-model="repuesto.nombre_repuesto" type="text" class="form-control" id="rif_juridico" placeholder="Ej: J-12345678-9" required />
+              <input v-model="repuesto.nombre_repuesto" type="text" class="form-control" id="rif_juridico" placeholder="Ej: Amortiguador" required />
             </div>
           </div>
 
           <div class="mb-3">
             <label for="desc_repuesto" class="form-label">Descripcion</label>
-            <input v-model="repuesto.desc_repuesto" type="text" class="form-control" id="nombre_fiscal" placeholder="Nombre completo de la empresa" required />
+            <input v-model="repuesto.desc_repuesto" type="text" class="form-control" id="nombre_fiscal" placeholder="Algunos detalles del repuesto" required />
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="precio_unitario" class="form-label">precio</label>
-              <input v-model="repuesto.precio_unitario" type="text" class="form-control" id="telefono_proveedor" placeholder="Ej: 0412-1234567" required />
+              <input v-model="repuesto.precio_unitario" type="text" class="form-control" id="telefono_proveedor" placeholder="Ej: 20.00" required />
             </div>
             <div class="col-md-6">
               <label for="stock_inventario" class="form-label">Stock</label>
-              <input v-model="repuesto.stock_inventario" type="text" class="form-control" id="direccion_proveedor" placeholder="Dirección completa" required />
+              <input v-model="repuesto.stock_inventario" type="text" class="form-control" id="direccion_proveedor" placeholder="Aqui se deja en 0" required />
             </div>
           </div>
         
