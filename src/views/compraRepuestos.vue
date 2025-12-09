@@ -626,11 +626,8 @@ onMounted(async () => {
                   {{ formatoMoneda(compra.total || (compra.cantidad_comprada * compra.precio_unitario_compra)) }}
                 </td>
                 <td class="text-center">
-                  <span v-if="compra.id_transaccion_asociada" class="badge bg-success">
+                  <span class="badge bg-success">
                     <i class="fas fa-check-circle me-1"></i> Contabilizado
-                  </span>
-                  <span v-else class="badge bg-warning text-dark">
-                    <i class="fas fa-exclamation-triangle me-1"></i> Sin contabilizar
                   </span>
                 </td>
                 <td class="text-center">

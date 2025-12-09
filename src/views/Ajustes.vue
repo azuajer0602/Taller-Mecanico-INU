@@ -141,17 +141,6 @@ onMounted(() => {
             <label for="desc_repuesto" class="form-label">Descripcion</label>
             <input v-model="repuesto.desc_repuesto" type="text" class="form-control" id="nombre_fiscal" placeholder="Algunos detalles del repuesto" required />
           </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label for="precio_unitario" class="form-label">precio</label>
-              <input v-model="repuesto.precio_unitario" type="text" class="form-control" id="telefono_proveedor" placeholder="Ej: 20.00" required />
-            </div>
-            <div class="col-md-6">
-              <label for="stock_inventario" class="form-label">Stock</label>
-              <input v-model="repuesto.stock_inventario" type="text" class="form-control" id="direccion_proveedor" placeholder="Aqui se deja en 0" required />
-            </div>
-          </div>
         
           <div class="d-flex justify-content-between pt-2">
             <button type="button" class="btn btn-secondary-outline w-50 me-2" @click="cancelarEdicion">Cancelar</button>
