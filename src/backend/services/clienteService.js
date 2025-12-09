@@ -2,7 +2,8 @@ import Cliente from '../models/Cliente.js';
 import { Op } from 'sequelize';
 
 class ClienteService {
-  // Traer todos los clientes con paginación
+  
+  // 1. Traer todos los clientes ACTIVOS con paginación
   async traerTodos(opciones = {}) {
     const {
       pagina = 1,
@@ -15,6 +16,7 @@ class ClienteService {
 
     try {
       const { count, rows } = await Cliente.findAndCountAll({
+        where: { estado: 1 }, // <--- FILTRO: Solo activos
         limit: parseInt(limite),
         offset: parseInt(offset),
         order: [[ordenarPor, orden.toUpperCase()]]
@@ -34,14 +36,20 @@ class ClienteService {
     }
   }
 
-  // Traer un cliente por ID
+  // 2. Traer un cliente por ID (Solo si está activo)
   async traerUno(id) {
     if (!id || !Number.isInteger(Number(id))) {
       throw new Error('ID de cliente inválido');
     }
 
     try {
-      const cliente = await Cliente.findByPk(id);
+      // Usamos findOne en lugar de findByPk para poder filtrar por estado
+      const cliente = await Cliente.findOne({
+        where: { 
+          id_cliente: id,
+          estado: 1 // <--- Solo buscar si no ha sido borrado
+        }
+      });
 
       if (!cliente) {
         throw new Error('Cliente no encontrado');
@@ -53,9 +61,9 @@ class ClienteService {
     }
   }
 
-  // Crear nuevo cliente
+  // 3. Crear nuevo cliente
   async crear(data) {
-    // Validación de campos requeridos según tu estructura
+    // Validación de campos requeridos
     if (!data.cedula || !data.nombre || !data.apellido || !data.correo) {
       throw new Error('Cédula, nombre, apellido y correo son requeridos');
     }
@@ -64,17 +72,19 @@ class ClienteService {
       // Normalizar datos
       data.cedula = String(data.cedula).trim();
       data.correo = String(data.correo).trim().toLowerCase();
+      data.estado = 1; // <--- Aseguramos que nazca activo
 
-      // Verificar si la cédula ya existe
+      // Validar duplicados (Cédula)
       const clientePorCedula = await Cliente.findOne({
         where: { cedula: data.cedula }
       });
 
       if (clientePorCedula) {
+        // Opcional: Si existe pero estado es 0, podrías informar que fue eliminado anteriormente.
         throw new Error('La cédula ya está registrada');
       }
 
-      // Verificar si el correo ya existe
+      // Validar duplicados (Correo)
       const clientePorCorreo = await Cliente.findOne({
         where: { correo: data.correo }
       });
@@ -95,58 +105,51 @@ class ClienteService {
     }
   }
 
-  // Actualizar cliente - CORREGIDO
+  // 4. Actualizar cliente
   async actualizar(id, data) {
     if (!id || !Number.isInteger(Number(id))) {
       throw new Error('ID de cliente inválido');
     }
 
     try {
-      const cliente = await Cliente.findByPk(id);
+      // Buscamos el cliente asegurando que esté activo
+      const cliente = await Cliente.findOne({
+        where: { 
+          id_cliente: id,
+          estado: 1 
+        }
+      });
 
       if (!cliente) {
-        throw new Error('Cliente no encontrado');
+        throw new Error('Cliente no encontrado o inactivo');
       }
 
       // Normalizar datos de entrada
       if (data.cedula) data.cedula = String(data.cedula).trim();
       if (data.correo) data.correo = String(data.correo).trim().toLowerCase();
 
-      // DEBUG: Ver qué datos estamos comparando
-      console.log('=== DEBUG ACTUALIZAR CLIENTE ===');
-      console.log('Cliente actual:', {
-        id: cliente.id,
-        cedula: cliente.cedula,
-        correo: cliente.correo
-      });
-      console.log('Datos nuevos:', data);
-
-      // Si se intenta cambiar la cédula, verificar que no exista en OTRO cliente
+      // Validar que la nueva cédula no pertenezca a OTRO cliente
       if (data.cedula && data.cedula !== cliente.cedula) {
         const cedulaExistente = await Cliente.findOne({
           where: {
             cedula: data.cedula,
-            id_cliente: { [Op.ne]: id } // EXCLUIR el cliente actual
+            id_cliente: { [Op.ne]: id } 
           }
         });
-
-        console.log('Resultado verificación cédula:', cedulaExistente ? 'ENCONTRADA' : 'NO ENCONTRADA');
 
         if (cedulaExistente) {
           throw new Error('La cédula ya está registrada en otro cliente');
         }
       }
 
-      // Si se intenta cambiar el correo, verificar que no exista en OTRO cliente
+      // Validar que el nuevo correo no pertenezca a OTRO cliente
       if (data.correo && data.correo !== cliente.correo) {
         const correoExistente = await Cliente.findOne({
           where: {
             correo: data.correo,
-            id_cliente: { [Op.ne]: id } // EXCLUIR el cliente actual
+            id_cliente: { [Op.ne]: id }
           }
         });
-
-        console.log('Resultado verificación correo:', correoExistente ? 'ENCONTRADO' : 'NO ENCONTRADO');
 
         if (correoExistente) {
           throw new Error('El correo ya está registrado en otro cliente');
@@ -154,11 +157,9 @@ class ClienteService {
       }
 
       await cliente.update(data);
-      console.log('Cliente actualizado exitosamente');
       return cliente;
 
     } catch (error) {
-      console.error('Error en actualizar:', error);
       if (error.name === 'SequelizeValidationError') {
         const mensajes = error.errors.map(err => err.message);
         throw new Error(`Error de validación: ${mensajes.join(', ')}`);
@@ -167,20 +168,27 @@ class ClienteService {
     }
   }
 
-  // Eliminar cliente (borrado físico)
+  // 5. Eliminar cliente (AHORA ES BORRADO LÓGICO)
   async eliminar(id) {
     if (!id || !Number.isInteger(Number(id))) {
       throw new Error('ID de cliente inválido');
     }
 
     try {
-      const cliente = await Cliente.findByPk(id);
+      const cliente = await Cliente.findOne({
+        where: { 
+          id_cliente: id, 
+          estado: 1 // Solo podemos eliminar si está activo
+        }
+      });
 
       if (!cliente) {
         throw new Error('Cliente no encontrado');
       }
 
-      await cliente.destroy();
+      // CAMBIO CLAVE: Update estado=0 en vez de destroy()
+      await cliente.update({ estado: 0 });
+      
       return { mensaje: 'Cliente eliminado correctamente' };
 
     } catch (error) {
@@ -188,13 +196,14 @@ class ClienteService {
     }
   }
 
-  // Buscar clientes por nombre, apellido, cédula o correo
+  // 6. Buscar clientes por término (Nombre, Cédula, etc.)
   async buscar(termino, opciones = {}) {
     const { limite = 10 } = opciones;
 
     try {
       const clientes = await Cliente.findAll({
         where: {
+          estado: 1, // <--- Solo buscar en activos
           [Op.or]: [
             { nombre: { [Op.like]: `%${termino}%` } },
             { apellido: { [Op.like]: `%${termino}%` } },
@@ -211,13 +220,16 @@ class ClienteService {
     }
   }
 
-  // Buscar por cédula exacta
+  // 7. Buscar por Cédula exacta
   async buscarPorCedula(cedula) {
     try {
-      // Normalizar cédula: quitar espacios y ceros iniciales
       const cedulaNormalizada = String(cedula).trim().replace(/^0+/, '');
+      
       const cliente = await Cliente.findOne({
-        where: { cedula: cedulaNormalizada }
+        where: { 
+          cedula: cedulaNormalizada,
+          estado: 1 // <--- Solo devolver si está activo
+        }
       });
 
       return cliente;

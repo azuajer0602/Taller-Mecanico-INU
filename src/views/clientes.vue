@@ -3,117 +3,245 @@ import Side from '../components/SidebarComponent.vue';
 </script>
 
 <template>
-  <Side/>
+  <div class="dashboard-container">
+    <Side class="sidebar-fixed"/>
+    
     <div class="main-content">
       <header class="dashboard-header">
-        <div class="header-left">
-          <h1>Taller Mecánico - Clientes</h1>
-          <p>Gestión de la base de datos de clientes, hoy es {{ currentDate }}</p>
-        </div>
-        <div class="header-right">
+        <div class="header-content">
+          <div>
+            <h1 class="page-title">Gestión de Clientes</h1>
+            <p class="page-subtitle">
+              <i class="far fa-calendar-alt me-2"></i>{{ currentDate }}
+            </p>
+          </div>
+          
           <div class="user-profile">
-            <img src="https://via.placeholder.com/40x40/007bff/ffffff?text=M" alt="Mecánico" class="user-avatar">
-            <span>Jefe de Taller</span>
+            <div class="avatar-circle">
+              <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="user-info d-none d-md-block">
+              <span class="user-name">Admin Taller</span>
+              <span class="user-role">Gerente</span>
+            </div>
           </div>
         </div>
       </header>
 
-      <div class="row g-3 mb-4">
-        <div class="col-md-3">
-          <div class="metric-card">
-            <div class="metric-icon" style="background-color: #007bff;">
-              <i class="fas fa-users"></i>
+      <div class="row g-4 mb-5">
+        <div class="col-12 col-md-6">
+          <div class="metric-card primary-card">
+            <div class="metric-body">
+              <div class="metric-value">{{ metricsClientes.total }}</div>
+              <div class="metric-label">Clientes Activos</div>
             </div>
-            <div class="metric-info">
-              <h3>Clientes Totales</h3>
-              <p class="metric-value">{{ metricsClientes.clientesTotales }}</p>
-              <p class="metric-change positive">+{{ metricsClientes.clientesNuevosMes }} nuevos este mes</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="metric-card">
-            <div class="metric-icon" style="background-color: #28a745;">
-              <i class="fas fa-car"></i>
-            </div>
-            <div class="metric-info">
-              <h3>Vehículos Registrados</h3>
-              <p class="metric-value">{{ metricsClientes.vehiculosRegistrados }}</p>
-              <p class="metric-change">{{ metricsClientes.promedioVehiculos }} por cliente</p>
+            <div class="metric-icon-container bg-primary-soft">
+              <i class="fas fa-users text-primary"></i>
             </div>
           </div>
         </div>
-        <div class="col-md-6">
-          <div class="metric-card">
-            <div class="metric-icon" style="background-color: #ffc107;">
-              <i class="fas fa-money-bill-wave"></i>
+        <div class="col-12 col-md-6">
+          <div class="metric-card success-card">
+            <div class="metric-body">
+              <div class="metric-value text-truncate" style="font-size: 1.5rem;">
+                {{ metricsClientes.ultimo }}
+              </div>
+              <div class="metric-label">Último Registro</div>
             </div>
-            <div class="metric-info">
-              <h3>Gasto Promedio por Cliente (Total)</h3>
-              <p class="metric-value">${{ metricsClientes.gastoPromedio.toLocaleString() }}</p>
-              <p class="metric-change">Top Cliente: {{ metricsClientes.topCliente }}</p>
+            <div class="metric-icon-container bg-success-soft">
+              <i class="fas fa-user-plus text-success"></i>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="row g-3">
-        <div class="col-12">
-          <div class="card">
-            <div class="card-header bg-primary text-white">
-              <h5 class="card-title mb-0">
-                <i class="fas fa-address-book me-2"></i>Listado de Clientes
-                <button class="btn btn-sm btn-light float-end">
-                  <i class="fas fa-plus me-1"></i> Nuevo Cliente
-                </button>
-              </h5>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Nombre Completo</th>
-                      <th>Teléfono</th>
-                      <th>Email</th>
-                      <th>Vehículos</th>
-                      <th>Último Servicio</th>
-                      <th class="text-end">Monto Acumulado</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="cliente in clientes" :key="cliente.id">
-                      <td>{{ cliente.id }}</td>
-                      <td>
-                        <strong>{{ cliente.nombre }}</strong>
-                        <span v-if="cliente.vip" class="badge bg-danger ms-2">VIP</span>
-                      </td>
-                      <td>{{ cliente.telefono }}</td>
-                      <td>{{ cliente.email }}</td>
-                      <td>{{ cliente.vehiculos.join(', ') }}</td>
-                      <td>{{ cliente.ultimoServicio }}</td>
-                      <td class="text-end">
-                        <strong class="text-primary">${{ cliente.montoAcumulado.toLocaleString() }}</strong>
-                      </td>
-                      <td>
-                        <button class="btn btn-sm btn-outline-info me-2" title="Ver Detalle">
-                          <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning" title="Editar">
-                          <i class="fas fa-edit"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+      <div class="card content-card shadow-sm border-0">
+        <div class="card-header bg-white border-0 py-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div>
+            <h5 class="card-title mb-1 fw-bold text-dark">Base de Datos de Clientes</h5>
+            <p class="text-muted small mb-0">Administra la información de tus clientes</p>
+          </div>
+          <button class="btn btn-primary btn-add px-4" @click="abrirModal()">
+            <i class="fas fa-plus me-2"></i>Nuevo Cliente
+          </button>
+        </div>
+
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table custom-table align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4">Cliente</th>
+                  <th>Contacto</th>
+                  <th>Ubicación</th>
+                  <th class="text-end pe-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="cargando">
+                  <td colspan="4" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Cargando datos...</p>
+                  </td>
+                </tr>
+
+                <tr v-else v-for="cliente in clientes" :key="cliente.id_cliente" class="hover-row">
+                  <td class="ps-4">
+                    <div class="d-flex align-items-center">
+                      <div class="client-avatar-small me-3">
+                        {{ cliente.nombre.charAt(0) }}{{ cliente.apellido.charAt(0) }}
+                      </div>
+                      <div>
+                        <h6 class="mb-0 fw-bold text-dark">{{ cliente.nombre }} {{ cliente.apellido }}</h6>
+                        <small class="text-muted">C.I: {{ cliente.cedula }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex flex-column">
+                      <span class="mb-1"><i class="fas fa-envelope text-primary me-2"></i>{{ cliente.correo }}</span>
+                      <small class="text-muted"><i class="fas fa-phone me-2"></i>{{ cliente.telefono || 'Sin teléfono' }}</small>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="d-inline-block text-truncate" style="max-width: 200px;">
+                      <i class="fas fa-map-marker-alt text-danger me-2"></i>{{ cliente.direccion || 'Sin dirección' }}
+                    </span>
+                  </td>
+                  <td class="text-end pe-4">
+                    <button class="btn btn-icon btn-light text-info me-2" @click="verDetalle(cliente)" title="Ver Detalle">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon btn-light text-warning me-2" @click="editarCliente(cliente)" title="Editar">
+                      <i class="fas fa-pen"></i>
+                    </button>
+                    <button class="btn btn-icon btn-light text-danger" @click="eliminarCliente(cliente.id_cliente)" title="Eliminar">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr v-if="!cargando && clientes.length === 0">
+                  <td colspan="4" class="text-center py-5">
+                    <div class="empty-state">
+                      <i class="fas fa-folder-open mb-3"></i>
+                      <h5>No hay clientes registrados</h5>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
+
+    <div v-if="mostrarModal" class="modal-backdrop fade show"></div>
+    <div v-if="mostrarModal" class="modal fade show d-block" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-primary text-white py-3">
+            <h5 class="modal-title fw-bold">
+              <i class="fas" :class="modoEdicion ? 'fa-user-edit' : 'fa-user-plus'"></i>
+              {{ modoEdicion ? ' Editar Cliente' : ' Nuevo Cliente' }}
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="cerrarModal"></button>
+          </div>
+          
+          <div class="modal-body p-4">
+            <form @submit.prevent="guardarCliente">
+              <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">Información Personal</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <label class="form-label small text-muted fw-bold">Cédula *</label>
+                  <input v-model="formulario.cedula" type="text" class="form-control bg-light" placeholder="Ej: V-123456" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small text-muted fw-bold">Nombre *</label>
+                  <input v-model="formulario.nombre" type="text" class="form-control bg-light" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small text-muted fw-bold">Apellido *</label>
+                  <input v-model="formulario.apellido" type="text" class="form-control bg-light" required>
+                </div>
+              </div>
+
+              <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">Datos de Contacto</h6>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label small text-muted fw-bold">Correo Electrónico *</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                    <input v-model="formulario.correo" type="email" class="form-control bg-light border-start-0" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small text-muted fw-bold">Teléfono</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-phone text-muted"></i></span>
+                    <input v-model="formulario.telefono" type="text" class="form-control bg-light border-start-0">
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small text-muted fw-bold">Dirección</label>
+                <textarea v-model="formulario.direccion" class="form-control bg-light" rows="3"></textarea>
+              </div>
+
+              <div class="modal-footer px-0 pb-0 pt-3 border-0">
+                <button type="button" class="btn btn-light px-4" @click="cerrarModal">Cancelar</button>
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                  {{ modoEdicion ? 'Guardar Cambios' : 'Registrar Cliente' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="mostrarModalDetalle" class="modal-backdrop fade show" style="z-index: 1055;"></div>
+    <div v-if="mostrarModalDetalle" class="modal fade show d-block" tabindex="-1" style="z-index: 1060;">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-info text-white">
+            <h5 class="modal-title fw-bold"><i class="fas fa-id-card me-2"></i>Ficha de Cliente</h5>
+            <button type="button" class="btn-close btn-close-white" @click="cerrarModalDetalle"></button>
+          </div>
+          <div class="modal-body p-0">
+             <div class="text-center bg-light py-4">
+                 <div class="avatar-large mx-auto mb-3 shadow-sm">
+                     {{ clienteSeleccionado.nombre.charAt(0) }}{{ clienteSeleccionado.apellido.charAt(0) }}
+                 </div>
+                 <h4 class="fw-bold text-dark mb-0">{{ clienteSeleccionado.nombre }} {{ clienteSeleccionado.apellido }}</h4>
+                 <span class="badge bg-primary rounded-pill mt-2">Cedula: {{ clienteSeleccionado.cedula }}</span>
+             </div>
+             <div class="p-4">
+                 <div class="row g-3">
+                     <div class="col-12 p-3 border rounded bg-white">
+                         <label class="small text-muted fw-bold d-block">Correo Electrónico</label>
+                         <span class="fs-6"><i class="fas fa-envelope text-info me-2"></i>{{ clienteSeleccionado.correo }}</span>
+                     </div>
+                     <div class="col-12 p-3 border rounded bg-white">
+                         <label class="small text-muted fw-bold d-block">Teléfono</label>
+                         <span class="fs-6"><i class="fas fa-phone text-success me-2"></i>{{ clienteSeleccionado.telefono || 'No registrado' }}</span>
+                     </div>
+                     <div class="col-12 p-3 border rounded bg-white">
+                         <label class="small text-muted fw-bold d-block">Dirección</label>
+                         <span class="fs-6"><i class="fas fa-map-marker-alt text-danger me-2"></i>{{ clienteSeleccionado.direccion || 'No registrada' }}</span>
+                     </div>
+                 </div>
+             </div>
+          </div>
+          <div class="modal-footer bg-light border-0">
+            <button type="button" class="btn btn-secondary w-100" @click="cerrarModalDetalle">Cerrar Ficha</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </template>
 
 <script>
@@ -121,325 +249,306 @@ export default {
   name: 'ClientesView',
   data() {
     return {
-      currentDate: new Date().toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
+      apiUrl: 'http://127.0.0.1:3000/api/clientes', 
       
-      // Métricas específicas para Clientes
-      metricsClientes: {
-        clientesTotales: 85,
-        clientesNuevosMes: 7,
-        vehiculosRegistrados: 125,
-        promedioVehiculos: (125 / 85).toFixed(2),
-        gastoPromedio: 55000,
-        topCliente: 'Juan Pérez'
+      cargando: false,
+      clientes: [],
+      
+      // Control Modales
+      mostrarModal: false,
+      mostrarModalDetalle: false, // Nuevo estado para el modal de detalle
+      modoEdicion: false,
+      
+      clienteSeleccionado: {}, // Para guardar el cliente que se ve en detalle
+
+      formulario: {
+        id_cliente: null,
+        cedula: '',
+        nombre: '',
+        apellido: '',
+        correo: '',
+        telefono: '',
+        direccion: ''
       },
-      
-      // Base de datos simulada de Clientes
-      clientes: [
-        {
-          id: 1,
-          nombre: 'Juan Pérez',
-          telefono: '+54 9 11 4567-8901',
-          email: 'juan.perez@email.com',
-          vehiculos: ['Toyota Hilux', 'Mazda CX-5'],
-          ultimoServicio: 'Hoy',
-          montoAcumulado: 350000,
-          vip: true
-        },
-        {
-          id: 2,
-          nombre: 'María García',
-          telefono: '+54 9 11 1234-5678',
-          email: 'maria.garcia@email.com',
-          vehiculos: ['Ford Ranger'],
-          ultimoServicio: 'Ayer',
-          montoAcumulado: 180000,
-          vip: false
-        },
-        {
-          id: 3,
-          nombre: 'Carlos López',
-          telefono: '+54 9 11 9876-5432',
-          email: 'carlos.lopez@email.com',
-          vehiculos: ['Chevrolet S10', 'Renault Clio'],
-          ultimoServicio: '15/03/2024',
-          montoAcumulado: 420000,
-          vip: true
-        },
-        {
-          id: 4,
-          nombre: 'Ana Martínez',
-          telefono: '+54 9 11 3333-4444',
-          email: 'ana.martinez@email.com',
-          vehiculos: ['Nissan Frontier'],
-          ultimoServicio: '14/03/2024',
-          montoAcumulado: 75000,
-          vip: false
-        },
-        {
-          id: 5,
-          nombre: 'José Ramírez',
-          telefono: '+54 9 11 5555-6666',
-          email: 'jose.ramirez@email.com',
-          vehiculos: ['Toyota Corolla'],
-          ultimoServicio: '13/03/2024',
-          montoAcumulado: 210000,
-          vip: false
-        },
-        // Más clientes de ejemplo
-        {
-          id: 6,
-          nombre: 'Marta Solís',
-          telefono: '+54 9 11 7777-8888',
-          email: 'marta.solis@email.com',
-          vehiculos: ['Honda Civic'],
-          ultimoServicio: '12/03/2024',
-          montoAcumulado: 168000,
-          vip: false
-        },
-      ]
+
+      currentDate: new Date().toLocaleDateString('es-VE', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      }),
+    }
+  },
+  computed: {
+    metricsClientes() {
+      if (!this.clientes.length) return { total: 0, ultimo: 'N/A' };
+      const ultimo = this.clientes[0];
+      return {
+        total: this.clientes.length,
+        ultimo: ultimo ? `${ultimo.nombre} ${ultimo.apellido}` : 'N/A'
+      }
     }
   },
   mounted() {
-    // Asegurarse de que los estilos externos estén cargados (copiado de tu componente original)
-    const faLink = document.createElement('link')
-    faLink.rel = 'stylesheet'
-    faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
-    document.head.appendChild(faLink)
+    this.cargarEstilosExternos();
+    this.obtenerClientes();
+  },
+  methods: {
+    cargarEstilosExternos() {
+      // Usamos una CDN muy estable para asegurar que los iconos carguen
+      if (!document.getElementById('fa-css')) {
+        const faLink = document.createElement('link')
+        faLink.id = 'fa-css'
+        faLink.rel = 'stylesheet'
+        faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+        document.head.appendChild(faLink)
+      }
+      if (!document.getElementById('bs-css')) {
+        const bsLink = document.createElement('link')
+        bsLink.id = 'bs-css'
+        bsLink.rel = 'stylesheet'
+        bsLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
+        document.head.appendChild(bsLink)
+      }
+      if (!document.getElementById('font-css')) {
+        const fontLink = document.createElement('link')
+        fontLink.id = 'font-css'
+        fontLink.rel = 'stylesheet'
+        fontLink.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap'
+        document.head.appendChild(fontLink)
+      }
+    },
+
+    async obtenerClientes() {
+        this.cargando = true;
+        try {
+            const respuesta = await fetch(this.apiUrl);
+            if (!respuesta.ok) throw new Error(`Error: ${respuesta.status}`);
+            const datos = await respuesta.json();
+
+            if (datos.data && datos.data.clientes) {
+                this.clientes = datos.data.clientes;
+            } else if (Array.isArray(datos.data)) {
+                 this.clientes = datos.data;
+            } else if (datos.body && datos.body.clientes) {
+                this.clientes = datos.body.clientes;
+            } else {
+                this.clientes = [];
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            this.cargando = false;
+        }
+    },
+
+    async guardarCliente() {
+        try {
+            const method = this.modoEdicion ? 'PUT' : 'POST';
+            const url = this.modoEdicion 
+                ? `${this.apiUrl}/${this.formulario.id_cliente}` 
+                : `${this.apiUrl}`;
+
+            const respuesta = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.formulario)
+            });
+
+            const resultado = await respuesta.json();
+            if (!respuesta.ok) {
+                const msg = resultado.message || (resultado.data ? resultado.data : 'Error al guardar');
+                alert(msg);
+                return;
+            }
+
+            await this.obtenerClientes(); 
+            this.cerrarModal();
+        } catch (error) {
+            alert('Error de conexión: ' + error.message);
+        }
+    },
+
+    async eliminarCliente(id) {
+        if(!confirm('¿Estás seguro de eliminar este cliente?')) return;
+        try {
+            const respuesta = await fetch(`${this.apiUrl}/${id}`, {
+                method: 'DELETE'
+            });
+            if (!respuesta.ok) {
+                alert('No se pudo eliminar el cliente');
+                return;
+            }
+            this.obtenerClientes(); 
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    },
+
+    // --- MANEJO DE MODALES ---
     
-    const bsLink = document.createElement('link')
-    bsLink.rel = 'stylesheet'
-    bsLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
-    document.head.appendChild(bsLink)
+    abrirModal() {
+        this.modoEdicion = false;
+        this.limpiarFormulario();
+        this.mostrarModal = true;
+    },
+    editarCliente(cliente) {
+        this.modoEdicion = true;
+        this.formulario = { ...cliente }; 
+        this.mostrarModal = true;
+    },
+    cerrarModal() {
+        this.mostrarModal = false;
+        this.limpiarFormulario();
+    },
+    
+    // Funciones para el nuevo modal de Detalle
+    verDetalle(cliente) {
+        this.clienteSeleccionado = { ...cliente };
+        this.mostrarModalDetalle = true;
+    },
+    cerrarModalDetalle() {
+        this.mostrarModalDetalle = false;
+        this.clienteSeleccionado = {};
+    },
+
+    limpiarFormulario() {
+        this.formulario = { id_cliente: null, cedula: '', nombre: '', apellido: '', correo: '', telefono: '', direccion: '' };
+    }
   }
 }
 </script>
 
 <style scoped>
-
-
-#logo-img {
-  width: 150px;
-  height: 130px;
-  margin-left: 50px;
-  margin-bottom: 20px;
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f3f6f9;
+  font-family: 'Poppins', sans-serif;
 }
 
-/* Main Content */
 .main-content {
-  padding: 20px;
-  min-height: 100vh;
+  flex: 1;
+  padding: 2rem;
   margin-left: 250px;
-  background-color: #f8f9fa;
+  transition: all 0.3s ease;
 }
 
 /* Header */
 .dashboard-header {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  margin-bottom: 2rem;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
-  padding: 20px 0;
-  border-bottom: 1px solid #dee2e6;
 }
 
-.header-left h1 {
-  color: #2c3e50;
-  margin-bottom: 5px;
-  font-size: 24px;
-  font-weight: 600;
-}
+.page-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; margin: 0; }
+.page-subtitle { color: #95a5a6; font-size: 0.9rem; margin-top: 5px; }
 
-.header-left p {
-  color: #6c757d;
-  font-size: 14px;
-  margin-bottom: 0;
-}
-
+/* Perfil */
 .user-profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: white;
-  padding: 10px 20px;
-  border-radius: 25px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border: 1px solid #e9ecef;
+  display: flex; align-items: center; gap: 15px;
+  padding: 8px 15px; background: #f8f9fa; border-radius: 50px;
 }
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
+.avatar-circle {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
 }
+.user-name { font-weight: 600; font-size: 0.9rem; color: #2c3e50; }
+.user-role { font-size: 0.75rem; color: #95a5a6; }
 
-/* Metric Cards */
+/* Tarjetas Métricas - ARREGLADO ICONOS */
 .metric-card {
   background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 16px;
+  padding: 1.5rem;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease;
   height: 100%;
-  border: 1px solid #e9ecef;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-left: 5px solid transparent;
 }
 
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
+.primary-card { border-left-color: #4e73df; }
+.success-card { border-left-color: #1cc88a; }
 
-.metric-icon {
-  width: 50px;
-  height: 50px;
+.metric-value { font-size: 2rem; font-weight: 700; color: #2c3e50; line-height: 1.2; }
+.metric-label { color: #858796; font-size: 0.9rem; margin-top: 5px; font-weight: 500; }
+
+/* Contenedor del icono corregido para que se vea */
+.metric-icon-container {
+  width: 60px; height: 60px;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+}
+.bg-primary-soft { background-color: rgba(78, 115, 223, 0.1); }
+.bg-success-soft { background-color: rgba(28, 200, 138, 0.1); }
+
+/* Tabla */
+.content-card { border-radius: 16px; overflow: hidden; }
+.custom-table th {
+  font-weight: 600; text-transform: uppercase; font-size: 0.75rem;
+  color: #858796; padding: 1rem;
+}
+.custom-table td { padding: 1rem; border-bottom: 1px solid #f0f2f5; }
+.hover-row:hover { background-color: #f8f9fc; }
+
+.client-avatar-small {
+  width: 35px; height: 35px; background-color: #e2e6ea;
+  color: #6c757d; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.8rem;
 }
 
-.metric-info h3 {
-  color: #6c757d;
-  font-size: 12px;
-  margin-bottom: 8px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.avatar-large {
+  width: 80px; height: 80px; background-color: #e2e6ea;
+  color: #4e73df; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 2rem;
 }
 
-.metric-value {
-  color: #2c3e50;
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 5px;
-  line-height: 1;
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; transition: all 0.2s;
+}
+.btn-icon:hover { transform: scale(1.1); }
+
+.modal-content { border-radius: 20px; border: none; }
+.form-control { border-radius: 10px; border: 1px solid #e3e6f0; }
+
+/* Responsive */
+@media (max-width: 992px) {
+  .main-content { margin-left: 0; padding: 1.5rem; }
+  .dashboard-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+  .header-content { width: 100%; }
 }
 
-.metric-change {
-  font-size: 11px;
-  font-weight: 500;
-  margin-bottom: 0;
-}
-
-.metric-change.positive {
-  color: #28a745;
-}
-
-/* Cards General */
-.card {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-1px);
-}
-
-.card-header {
-  border-radius: 12px 12px 0 0 !important;
-  border: none;
-  padding: 15px 20px;
-  font-weight: 600;
-}
-
-.card-title {
-  font-size: 16px;
-  margin-bottom: 0;
-}
-
-/* List Groups */
-.list-group-item {
-  border: none;
-  border-bottom: 1px solid #e9ecef;
-  padding: 15px 20px;
-  transition: background-color 0.2s ease;
-}
-
-.list-group-item:last-child {
-  border-bottom: none;
-}
-
-.list-group-item:hover {
-  background-color: #f8f9fa;
-}
-
-/* Table Styles */
-.table {
-  margin-bottom: 0;
-}
-
-.table th {
-  border-top: none;
-  font-weight: 600;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #6c757d;
-  padding: 15px 20px;
-}
-
-.table td {
-  padding: 15px 20px;
-  vertical-align: middle;
-  border-color: #e9ecef;
-}
-
-/* Badges */
-.badge {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 4px 8px;
-}
-
-/* Responsive Design */
-@media screen and (max-width: 768px) {
-  .main-content {
-    margin-left: 0;
-    padding: 15px;
+@media (max-width: 768px) {
+  .metric-card { margin-bottom: 1rem; }
+  /* Tabla tarjeta */
+  .custom-table thead { display: none; }
+  .custom-table, .custom-table tbody, .custom-table tr, .custom-table td {
+    display: block; width: 100%;
   }
-  
-
-  .dashboard-header {
-    flex-direction: column;
-    gap: 15px;
-    align-items: flex-start;
+  .custom-table tr {
+    margin-bottom: 1rem; background: white;
+    border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    padding: 1rem; border: 1px solid #e3e6f0;
   }
-  
-  .user-profile {
-    align-self: flex-start;
+  .custom-table td { padding: 0.5rem 0; text-align: left; border: none; }
+  .custom-table td.text-end {
+    text-align: right; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f2f5;
   }
-  
-  .metric-card {
-    padding: 15px;
-  }
-  
-  .metric-value {
-    font-size: 18px;
-  }
-}
-
-/* Ajustes de altura para evitar scroll */
-.main-content {
-padding-left: 40px;
-  overflow-y: auto;
-}
-
-
-
-.col-12 .card {
-  margin-top: 1rem;
 }
 </style>

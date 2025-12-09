@@ -80,6 +80,12 @@ const Cliente = sequelize.define('Cliente', {
         }
       }
     }
+  },
+  estado: {
+    type: DataTypes.TINYINT, // O BOOLEAN
+    allowNull: false,
+    defaultValue: 1, // Por defecto al crear será 1 (Activo)
+    field: 'Estado'  
   }
 }, {
   tableName: 'cliente',

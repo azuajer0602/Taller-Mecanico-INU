@@ -1,4 +1,4 @@
-import clienteService from '../services/clienteService.js'; // Importar el servicio
+import clienteService from '../services/clienteService.js'; 
 
 async function todos(opciones = {}) {    
   try {
@@ -16,7 +16,7 @@ async function uno(id) {
   }
 }
 
-async function eliminar(id) { // Cambiado para recibir solo el ID
+async function eliminar(id) { 
   try {
     return await clienteService.eliminar(id);
   } catch (error) {
@@ -24,22 +24,26 @@ async function eliminar(id) { // Cambiado para recibir solo el ID
   }
 }
 
+// Función para CREAR (POST)
 async function agregar(datos) {
   try {
-    // Si viene con id_cliente, es actualización, sino es creación
-    if (datos.id_cliente && datos.id_cliente !== 0) {
-      return await clienteService.actualizar(datos.id_cliente, datos);
-    } else {
-      // Remover id_cliente si es 0 o null para creación
-      const { id_cliente, ...datosCreacion } = datos;
-      return await clienteService.crear(datosCreacion);
-    }
+    // Si por error envían un ID, lo quitamos para asegurar que se cree uno nuevo
+    const { id_cliente, ...datosCreacion } = datos;
+    return await clienteService.crear(datosCreacion);
   } catch (error) {
     throw new Error(`Error en controlador: ${error.message}`);
   }
 }
 
-// Nuevos métodos para funcionalidades adicionales
+// Función para ACTUALIZAR (PUT) - ESTA ES LA QUE FALTABA
+async function actualizar(id, datos) {
+  try {
+    return await clienteService.actualizar(id, datos);
+  } catch (error) {
+    throw new Error(`Error en controlador: ${error.message}`);
+  }
+}
+
 async function buscar(termino, opciones = {}) {
   try {
     return await clienteService.buscar(termino, opciones);
@@ -56,11 +60,13 @@ async function buscarPorCedula(cedula) {
   }
 }
 
+// EXPORTAMOS TODAS LAS FUNCIONES, INCLUYENDO 'actualizar'
 export default {
   todos,
   uno,
   eliminar,
   agregar,
+  actualizar, // <--- ¡AQUÍ ESTABA EL ERROR! Faltaba exportar esto
   buscar,
   buscarPorCedula
 };
