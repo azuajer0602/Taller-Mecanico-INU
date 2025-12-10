@@ -2,6 +2,9 @@
 import Side from '../components/SidebarComponent.vue';
 import { reactive, ref, onMounted } from 'vue';
 import axios from 'axios';
+// *** Nuevas importaciones para PDF ***
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const API_BASE_URL = 'http://localhost:3000/api/repuestos';
 
@@ -18,6 +21,65 @@ const cargando = ref(false);
 const error = ref(null);
 const repuestoEditandoId = ref(null);
 
+const exportarAPDF = async () => {
+  
+  const tabla = document.querySelector('.table-responsive'); 
+  
+  if (!tabla) {
+    alert("No se encontró el elemento de la tabla para exportar.");
+    return;
+  }
+
+  try {
+    const canvas = await html2canvas(tabla, {
+      scale: 2, 
+      logging: true,
+      useCORS: true,
+    });
+
+    // 3. Crear el PDF con jspdf
+    const pdf = new jsPDF('p', 'mm', 'a4'); 
+    const imgData = canvas.toDataURL('image/png');
+    
+    const imgWidth = 200;
+    const pageHeight = 295; 
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 5; 
+
+    // Añadir el título
+    pdf.setFontSize(18);
+    pdf.text("Reporte de Inventario de Repuestos", 105, 15, null, null, "center");
+    pdf.setFontSize(10);
+    pdf.text(`Fecha de Reporte: ${new Date().toLocaleDateString()}`, 105, 22, null, null, "center");
+
+    position = 30; // Ajustar posición para empezar la imagen después del título
+
+    if (imgHeight < pageHeight - position) {
+      pdf.addImage(imgData, 'PNG', 5, position, imgWidth, imgHeight);
+    } else {
+      // Manejo de múltiples páginas
+      let currentPage = 1;
+      while (heightLeft >= 0) {
+        if (currentPage > 1) {
+          pdf.addPage();
+          position = 5; // Reiniciar posición en nueva página
+        }
+        
+        pdf.addImage(imgData, 'PNG', 5, position - heightLeft, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - 10); // Restar el área que cabe en la página
+        currentPage++;
+      }
+    }
+
+    // 5. Descargar el archivo
+    pdf.save('inventario_repuestos.pdf');
+
+  } catch (err) {
+    console.error('Error al generar el PDF:', err);
+    alert('Hubo un error al generar el PDF. Revisa la consola para más detalles.');
+  }
+};
 const cargarRepuestos = async () => {
   cargando.value = true;
   error.value = null;
@@ -123,6 +185,9 @@ onMounted(() => {
           <i class="bi bi-tools form-icon"></i>
           <h3 class="form-title">Inventario Disponible</h3>
           <p class="form-subtitle">Gestiona los Repuestos disponibles registrados en el sistema.</p>
+          <button @click="exportarAPDF" class="btn btn-danger mt-3">
+            <i class="bi bi-file-pdf"></i> Exportar a PDF
+          </button>
         </div>
         
       
