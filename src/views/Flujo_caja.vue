@@ -413,7 +413,7 @@ const inicializarGraficos = () => {
       scales: { 
         y: { 
           beginAtZero: true, 
-          ticks: { callback: value => 'VES.' + value.toLocaleString() } 
+          ticks: { callback: value => 'Bs. ' + value.toLocaleString() } 
         } 
       }
     }
@@ -491,7 +491,7 @@ const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
     for (let i = 0; i <= 5; i++) {
       const value = Math.round((i * maxValue) / 5)
       const y = margin.top + height - (i * height / 5)
-      tempCtx.fillText('VES.' + value.toLocaleString(), margin.left - 10, y)
+      tempCtx.fillText('Bs. ' + value.toLocaleString(), margin.left - 10, y)
     }
 
     tempCtx.fillStyle = '#2c3e50'; tempCtx.font = 'bold 16px Arial'; tempCtx.textAlign = 'center';
@@ -617,7 +617,7 @@ const generarPDF = async () => {
         t.codigo_contable, 
         t.descripcion, 
         t.categoria, 
-        `VES.${t.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
+        `Bs. ${t.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
         t.referencia
       ]),
       styles: { fontSize: 8 },
@@ -682,7 +682,7 @@ onMounted(async () => {
               <span class="badge bg-success bg-opacity-10 text-success px-3">Disponible</span>
             </div>
             <p class="metric-value text-dark mt-2 mb-0">
-              VES.{{ metrics.dineroCaja.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              Bs. {{ metrics.dineroCaja.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <small class="text-muted">Calculado según movimientos en efectivo</small>
           </div>
@@ -700,7 +700,7 @@ onMounted(async () => {
               <span class="badge bg-primary bg-opacity-10 text-primary px-3">Bancos Digitales</span>
             </div>
             <p class="metric-value text-dark mt-2 mb-0">
-              VES.{{ metrics.dineroBanco.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              Bs. {{ metrics.dineroBanco.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <small class="text-muted">Pago Móvil, Transferencias, Puntos</small>
           </div>
@@ -718,7 +718,7 @@ onMounted(async () => {
           <div class="metric-info">
             <h3 class="text-primary fw-bold">TOTAL DEBE (MES)</h3>
             <p class="metric-value text-dark">
-              VES.{{ metrics.debeMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              Bs. {{ metrics.debeMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <p class="metric-change text-muted small">
               <i class="fas fa-info-circle me-1"></i>Movimiento Deudor
@@ -735,7 +735,7 @@ onMounted(async () => {
           <div class="metric-info">
             <h3 class="text-danger fw-bold">TOTAL HABER (MES)</h3>
             <p class="metric-value text-dark">
-              VES.{{ metrics.haberMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              Bs. {{ metrics.haberMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <p class="metric-change text-muted small">
               <i class="fas fa-info-circle me-1"></i>Movimiento Acreedor
@@ -755,7 +755,7 @@ onMounted(async () => {
               CUADRE CONTABLE
             </h3>
             <p class="metric-value text-dark">
-              VES.{{ metrics.balanceMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+              Bs. {{ metrics.balanceMes.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
             </p>
             <p class="metric-change small" :class="metrics.balanceMes === 0 ? 'text-success' : 'text-warning'">
               <i class="fas" :class="metrics.balanceMes === 0 ? 'fa-check' : 'fa-exclamation-triangle'"></i>
@@ -824,7 +824,7 @@ onMounted(async () => {
                     <p class="mb-1 text-muted small">{{ cuenta.descripcion }}</p>
                   </div>
                   <div class="text-end">
-                    <strong class="text-success">VES.{{ cuenta.monto.toLocaleString() }}</strong>
+                    <strong class="text-success">Bs. {{ cuenta.monto.toLocaleString() }}</strong>
                     <div class="mt-1">
                       <small class="text-muted">Vence: {{ cuenta.fechaVencimiento }}</small>
                     </div>
@@ -859,7 +859,7 @@ onMounted(async () => {
                     <p class="mb-1 text-muted small">{{ cuenta.descripcion }}</p>
                   </div>
                   <div class="text-end">
-                    <strong class="text-danger">VES.{{ cuenta.monto.toLocaleString() }}</strong>
+                    <strong class="text-danger">Bs. {{ cuenta.monto.toLocaleString() }}</strong>
                     <div class="mt-1">
                       <small class="text-muted">Vence: {{ cuenta.fechaVencimiento }}</small>
                     </div>
@@ -941,7 +941,7 @@ onMounted(async () => {
         'text-danger': trx.tipo === 'egreso',
         'text-dark': trx.tipo === 'balance'
       }" class="fs-6">
-        VES.{{ trx.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+        Bs. {{ trx.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
       </strong>
     </td>
     

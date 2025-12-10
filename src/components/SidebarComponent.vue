@@ -129,10 +129,6 @@ const handleLogout = () => {
           <span class="nav-text">Diagnóstico Técnico</span>
         </router-link>
 
-        <a href="#contacto" class="nav-link" @click="closeSidebar">
-          <span class="nav-icon">📧</span>
-          <span class="nav-text">Contacto</span>
-        </a>
 
         <router-link 
     to="/" 
