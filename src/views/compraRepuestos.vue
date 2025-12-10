@@ -138,16 +138,16 @@ const cargarProveedores = async () => {
 
 // Nuevo: cargar tipos de operación
 const cargarTiposOperacion = async () => {
-  try {
-    const response = await api.get('/tipos-transaccion');
-    if (response.data.success) {
-      // Filtrar para mostrar solo tipos relacionados con compras/mercancía
-      tiposDeOperacion.value = response.data.data.filter(t => 
-        ['GASTO', 'EGRESO', 'COMPRA', 'ACTIVO'].includes((t.tipo_cuenta || '').toUpperCase()) ||
-        (t.nombre_tipo || '').toLowerCase().includes('repuesto') ||
-        (t.nombre_tipo || '').toLowerCase().includes('mercancía') ||
-        (t.nombre_tipo || '').toLowerCase().includes('inventario')
-      );
+   try {
+     const response = await api.get('/tipos-transaccion');
+     if (response.data.success) {
+       tiposDeOperacion.value = response.data.data.filter(t => 
+         (t.nombre_tipo || '').trim().toUpperCase() === 'COMPRAS'
+       );
+       
+       if (tiposDeOperacion.value.length === 1) {
+         nuevaCompra.value.id_tipo_transaccion = tiposDeOperacion.value[0].id_tipo_transaccion_pk;
+       }
     }
   } catch (error) { 
     console.error('Error cargando tipos:', error); 
