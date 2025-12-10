@@ -130,17 +130,10 @@ const handleLogout = () => {
         </router-link>
 
 
-        <router-link 
-    to="/" 
-    class="nav-link" 
-    :class="{ active: $route.path === '/' }" 
-    
-    @click.prevent="handleLogout(); closeSidebar()" 
-    
->
-    <span class="nav-icon">🚪</span>
-    <span class="nav-text">Salir</span>
-</router-link>
+        <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }" @click.prevent="handleLogout(); closeSidebar()">
+          <span class="nav-icon">🚪</span>
+          <span span class="nav-text">Salir</span>
+        </router-link>
       </nav>
     </div>
   </div>
