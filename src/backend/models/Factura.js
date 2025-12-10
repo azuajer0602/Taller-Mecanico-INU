@@ -1,5 +1,7 @@
 import { DataTypes } from 'sequelize';
 import database from '../config/database.js';
+import Cliente from './Cliente.js';
+import ItemFactura from './ItemFactura.js';
 
 const Factura = database.sequelize.define('Factura', {
     id: {

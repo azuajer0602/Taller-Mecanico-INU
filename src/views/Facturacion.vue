@@ -130,8 +130,7 @@ import Side from '../components/SidebarComponent.vue';
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from 'vue-router';
 import HistorialFacturas from './HistorialFacturas.vue';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// Eliminado jsPDF en cliente: usaremos generación en backend
 
 const router = useRouter();
 const route = useRoute();
@@ -220,7 +219,7 @@ const buscarClientePorCedula = async () => {
       cliente.value.id_cliente = null;
       if (confirm(`El cliente con cédula ${cedulaLimpia} no está registrado. ¿Desea registrarlo ahora?`)) {
         router.push({
-          path: '/registro',
+          path: '/clientes', // CORRECCIÓN: Redirigir a la vista de clientes
           query: { cedula: cedulaLimpia }
         });
       }
@@ -231,7 +230,7 @@ const buscarClientePorCedula = async () => {
   }
 };
 
-const limpiarFormulario = () => {
+const resetFormulario = () => {
   cliente.value = { id_cliente: null, nombre: "", apellido: "", cedula: "", correo: "", direccion: "", telefono: "" };
   pago.value = {
     fechaPago: new Date().toISOString().split("T")[0],
@@ -240,8 +239,12 @@ const limpiarFormulario = () => {
   };
   productos.value = [{ descripcion: "", cantidad: 1, precio: 0 }];
   clienteEncontrado.value = false;
-};
+}
 
+const limpiarFormulario = () => {
+  resetFormulario();
+  alert("Formulario limpiado. Puede empezar una nueva factura.");
+}
 const abrirHistorial = () => {
   if (historialComponent.value) {
     historialComponent.value.fetchFacturas();
@@ -250,127 +253,18 @@ const abrirHistorial = () => {
 
 const generarPDF = async (facturaId) => {
   try {
-    console.log('Generando PDF para factura ID:', facturaId);
-
-    // Obtener la factura específica por su ID
-    const response = await fetch(`${API_BASE}/facturas/${facturaId}`);
-    console.log('Respuesta del fetch:', response.status);
-
+    // Generar PDF desde backend y guardar ruta en BD
+    const response = await fetch(`${API_BASE}/facturas/${facturaId}/pdf`, { method: 'POST' });
     const data = await response.json();
-    console.log('Datos recibidos:', data);
-
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status} - ${data.message || 'No se pudo obtener la factura'}`);
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || `Error HTTP: ${response.status}`);
     }
-
-    if (!data.success) {
-      throw new Error(data.message || 'Error en la respuesta de la API');
-    }
-
-    const factura = data.data;
-    console.log('Factura obtenida:', factura);
-
-    // --- INICIO DEL NUEVO DISEÑO DE PDF ---
-    const pdf = new jsPDF();
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const margin = 15;
-    let yPosition = margin;
-
-    // 1. Encabezado con Logo
-    try {
-      const logoImg = new Image();
-      logoImg.src = '/logo.png'; // Asegúrate de que tu logo esté en la carpeta `public`
-      pdf.addImage(logoImg, 'PNG', margin, yPosition, 30, 30);
-    } catch (error) {
-      console.warn("Logo no encontrado en /logo.png, continuando sin él.");
-    }
-
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('MECANOSOFT', pageWidth - margin, yPosition, { align: 'right' });
-    pdf.text('Servicio de Reparación de Vehículos', pageWidth - margin, yPosition + 6, { align: 'right' });
-    yPosition += 35;
-
-    // 2. Título y Detalles de la Factura
-    pdf.setFontSize(22);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(44, 62, 80); // Color oscuro
-    pdf.text('FACTURA', margin, yPosition);
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(100);
-    pdf.text(`Nº Factura: ${factura.id}`, pageWidth - margin, yPosition - 5, { align: 'right' });
-    pdf.text(`Fecha: ${new Date(factura.fechaPago).toLocaleDateString()}`, pageWidth - margin, yPosition, { align: 'right' });
-    yPosition += 15;
-
-    // 3. Datos del Cliente
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(44, 62, 80);
-    pdf.text('Facturar a:', margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(0);
-    pdf.text(`${factura.Cliente.nombre} ${factura.Cliente.apellido}`, margin, yPosition);
-    pdf.text(`C.I: ${factura.Cliente.cedula}`, margin, yPosition + 5);
-    pdf.text(`Email: ${factura.Cliente.correo}`, margin, yPosition + 10);
-    pdf.text(`Teléfono: ${factura.Cliente.telefono}`, margin, yPosition + 15);
-
-    // 4. Tabla de Items con autoTable
-    const monedaSimbolo = factura.metodoPago === 'Divisas' ? '$' : 'Bs';
-    const tableBody = factura.ItemFacturas.map(item => [
-      item.descripcion,
-      item.cantidad,
-      `${monedaSimbolo} ${parseFloat(item.precio).toFixed(2)}`,
-      `${monedaSimbolo} ${(item.cantidad * item.precio).toFixed(2)}`
-    ]);
-
-    autoTable(pdf, {
-      startY: yPosition + 25,
-      head: [['Descripción', 'Cantidad', 'Precio Unitario', 'Subtotal']],
-      body: tableBody,
-      theme: 'grid',
-      headStyles: {
-        fillColor: [44, 62, 80], // Color oscuro para encabezado
-        textColor: 255,
-        fontStyle: 'bold'
-      },
-      styles: {
-        fontSize: 10
-      },
-      columnStyles: {
-        1: { halign: 'center' },
-        2: { halign: 'right' },
-        3: { halign: 'right' }
-      }
-    });
-
-    yPosition = pdf.lastAutoTable.finalY + 15;
-
-    // 5. Total y Pie de Página
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`TOTAL: ${monedaSimbolo} ${parseFloat(factura.total).toFixed(2)}`, pageWidth - margin, yPosition, { align: 'right' });
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(150);
-    pdf.text(`Método de Pago: ${factura.metodoPago}`, margin, yPosition);
-    pdf.text(`Estado: ${factura.estado}`, margin, yPosition + 5);
-
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    pdf.setFontSize(10);
-    pdf.setTextColor(100);
-    pdf.text('¡Gracias por su confianza!', pageWidth / 2, pageHeight - 15, { align: 'center' });
-
-    // --- FIN DEL NUEVO DISEÑO DE PDF ---
-
-    pdf.save(`Factura_${factura.id}_${factura.Cliente.nombre}_${factura.Cliente.apellido}.pdf`);
-
+    const url = data.url.startsWith('http') ? data.url : `http://localhost:3000${data.url}`;
+    // Abrir el PDF generado en nueva pestaña
+    window.open(url, '_blank');
   } catch (error) {
-    console.error('Error generando PDF:', error);
-    alert(`Error al generar el PDF de la factura: ${error.message}`);
+    console.error('Error generando PDF en backend:', error);
+    alert(`Error al generar el PDF en el servidor: ${error.message}`);
   }
 };
 
@@ -410,7 +304,7 @@ const guardarFactura = async () => {
     }
 
     // CORRECCIÓN: El ID de la factura viene dentro de data.data
-    const nuevaFacturaId = data.data.id;
+    const nuevaFacturaId = data.data.id; // El ID de la nueva factura está en la respuesta
     alert(`Factura #${nuevaFacturaId} guardada exitosamente en la base de datos.`);
 
     // Generar PDF automáticamente después de guardar
@@ -456,23 +350,8 @@ onMounted(() => {
 
 // Limpiar estado al desmontar el componente para evitar problemas de navegación
 onBeforeUnmount(() => {
-  // Limpiar refs para evitar estado persistente
-  cliente.value = {
-    id_cliente: null,
-    nombre: "",
-    apellido: "",
-    cedula: "",
-    correo: "",
-    direccion: "",
-    telefono: "",
-  };
-  pago.value = {
-    fechaPago: new Date().toISOString().split("T")[0],
-    estado: "Pagado",
-    metodoPago: "Divisas",
-  };
-  productos.value = [{ descripcion: "", cantidad: 1, precio: 0 }];
-  clienteEncontrado.value = false;
+  // Limpiar refs para evitar estado persistente entre navegaciones
+  resetFormulario();
   facturas.value = [];
   loadingFacturas.value = false;
 });

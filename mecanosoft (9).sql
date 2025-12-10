@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 10-12-2025 a las 00:40:17
+-- Tiempo de generación: 10-12-2025 a las 03:14:30
 -- Versión del servidor: 10.4.32-MariaDB
--- Versión de PHP: 8.2.12
+-- Versión de PHP: 8.0.30
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -20,6 +20,30 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `mecanosoft`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `atributos`
+--
+
+CREATE TABLE `atributos` (
+  `id_atributo` int(11) NOT NULL,
+  `nombre` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `atributo_vehiculo`
+--
+
+CREATE TABLE `atributo_vehiculo` (
+  `id_atributo_vehiculo` int(11) NOT NULL,
+  `matricula` varchar(15) NOT NULL,
+  `id_atributo` int(11) NOT NULL,
+  `id_estado_atributo` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -89,7 +113,8 @@ INSERT INTO `compra_repuesto` (`id_compra_repuesto`, `precio_unitario_compra`, `
 (3, 300, '2025-12-09 00:00:00', 10, 1, 14),
 (4, 150, '2025-12-09 00:00:00', 10, 1, 16),
 (5, 130, '2025-12-09 00:00:00', 6, 1, 16),
-(7, 200, '2025-12-09 00:00:00', 10, 1, 14);
+(7, 200, '2025-12-09 00:00:00', 10, 1, 14),
+(8, 2500, '2025-12-09 00:00:00', 10, 1, 1558214);
 
 -- --------------------------------------------------------
 
@@ -117,17 +142,6 @@ CREATE TABLE `concepto_pago` (
   `fecha_vencimiento` date NOT NULL,
   `estado_pago` varchar(45) NOT NULL,
   `id_compra_repuesto` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `detalles_servicio`
---
-
-CREATE TABLE `detalles_servicio` (
-  `id_order` int(11) NOT NULL,
-  `id_servicio` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -198,7 +212,9 @@ INSERT INTO `detalle_transaccion` (`id_detalle`, `id_transaccion`, `debe`, `habe
 (124, 67, 2000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
 (125, 67, 0.00, 2000.00, 'Compra de bujia (Bolívares)', 0, 0, NULL, 'Bolívares', 25),
 (126, 68, 2000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
-(127, 68, 0.00, 2000.00, 'Compra de amortiguador (Bolívares)', 0, 0, NULL, 'Bolívares', 25);
+(127, 68, 0.00, 2000.00, 'Compra de amortiguador (Bolívares)', 0, 0, NULL, 'Bolívares', 25),
+(128, 69, 25000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
+(129, 69, 0.00, 25000.00, 'Compra de Rin 24 (Bolívares)', 0, 0, NULL, 'Bolívares', 25);
 
 -- --------------------------------------------------------
 
@@ -238,6 +254,38 @@ CREATE TABLE `empleado` (
 INSERT INTO `empleado` (`id_empleado`, `usuario`, `contrasena`, `nombre_emp`, `apellido_emp`, `cedula_emp`, `cargo`, `fecha_contratacion`, `sueldo_base`) VALUES
 (31, 'rei', '1234', 'reimil', 'azuaje', '31663399', 'Administrador', '2025-11-20 00:00:00', 5000),
 (32, 'yejo', '1234', 'Yelians', 'Rodriguez', '30942261', 'Mecanico', '2025-12-09 00:00:00', 40);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estado`
+--
+
+CREATE TABLE `estado` (
+  `id_estado` int(11) NOT NULL,
+  `nombre_estado` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `estado`
+--
+
+INSERT INTO `estado` (`id_estado`, `nombre_estado`) VALUES
+(1, 'En Espera'),
+(2, 'En Espera'),
+(3, 'En Reparación'),
+(4, 'Reparado');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estados_atributo`
+--
+
+CREATE TABLE `estados_atributo` (
+  `id_estado_atributo_fk` int(11) NOT NULL,
+  `nombre_atributo` varchar(30) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -300,6 +348,17 @@ CREATE TABLE `itemfacturas` (
   `precio` decimal(10,2) NOT NULL,
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `marca`
+--
+
+CREATE TABLE `marca` (
+  `id_marca` int(11) NOT NULL,
+  `nombre_marca` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -373,7 +432,8 @@ CREATE TABLE `repuesto` (
 
 INSERT INTO `repuesto` (`id_repuesto`, `nombre_repuesto`, `precio_unitario`, `stock_inventario`, `desc_repuesto`) VALUES
 (14, 'amortiguador', 200, 44, 'pieza para amotiguacion'),
-(16, 'bujia', 130, 16, 'grado 2');
+(16, 'bujia', 130, 16, 'grado 2'),
+(1558214, 'Rin 24', 2500, 10, 'Rin para medida 24');
 
 -- --------------------------------------------------------
 
@@ -383,9 +443,14 @@ INSERT INTO `repuesto` (`id_repuesto`, `nombre_repuesto`, `precio_unitario`, `st
 
 CREATE TABLE `servicio` (
   `id_servicio` int(11) NOT NULL,
-  `nombre_servicio` varchar(45) NOT NULL,
-  `description` tinytext NOT NULL,
-  `precio_base` decimal(10,2) NOT NULL
+  `matricula_fk` varchar(15) NOT NULL,
+  `id_cliente` int(11) NOT NULL,
+  `id_empleado_fk` int(11) NOT NULL,
+  `id_estado` int(11) NOT NULL,
+  `entrega` enum('Entregado','No entregado') NOT NULL,
+  `fecha_entrada` date NOT NULL,
+  `fecha_salida` date NOT NULL,
+  `mano_obra` float NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -492,7 +557,8 @@ INSERT INTO `transacciones` (`id_transaccion`, `id_tipo_transaccion_fk`, `fecha_
 (65, 5, '2025-12-09'),
 (66, 25, '2025-12-09'),
 (67, 25, '2025-12-09'),
-(68, 25, '2025-12-09');
+(68, 25, '2025-12-09'),
+(69, 25, '2025-12-09');
 
 -- --------------------------------------------------------
 
@@ -504,7 +570,7 @@ CREATE TABLE `vehiculo` (
   `matricula` varchar(15) NOT NULL,
   `id_cliente` int(11) NOT NULL,
   `color` varchar(20) DEFAULT NULL,
-  `marca` varchar(20) DEFAULT NULL,
+  `id_marca` int(20) DEFAULT NULL,
   `modelo` varchar(45) DEFAULT NULL,
   `afio` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -512,6 +578,21 @@ CREATE TABLE `vehiculo` (
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `atributos`
+--
+ALTER TABLE `atributos`
+  ADD PRIMARY KEY (`id_atributo`);
+
+--
+-- Indices de la tabla `atributo_vehiculo`
+--
+ALTER TABLE `atributo_vehiculo`
+  ADD PRIMARY KEY (`id_atributo_vehiculo`),
+  ADD KEY `matricula` (`matricula`),
+  ADD KEY `id_atributo` (`id_atributo`),
+  ADD KEY `id_estado_atributo` (`id_estado_atributo`);
 
 --
 -- Indices de la tabla `categoria_gasto`
@@ -550,13 +631,6 @@ ALTER TABLE `concepto_pago`
   ADD KEY `fk_compra_repuesto` (`id_compra_repuesto`);
 
 --
--- Indices de la tabla `detalles_servicio`
---
-ALTER TABLE `detalles_servicio`
-  ADD PRIMARY KEY (`id_order`,`id_servicio`),
-  ADD KEY `id_servicio` (`id_servicio`);
-
---
 -- Indices de la tabla `detalle_repuesto`
 --
 ALTER TABLE `detalle_repuesto`
@@ -585,6 +659,18 @@ ALTER TABLE `empleado`
   ADD PRIMARY KEY (`id_empleado`);
 
 --
+-- Indices de la tabla `estado`
+--
+ALTER TABLE `estado`
+  ADD PRIMARY KEY (`id_estado`);
+
+--
+-- Indices de la tabla `estados_atributo`
+--
+ALTER TABLE `estados_atributo`
+  ADD PRIMARY KEY (`id_estado_atributo_fk`);
+
+--
 -- Indices de la tabla `factura`
 --
 ALTER TABLE `factura`
@@ -610,6 +696,12 @@ ALTER TABLE `gasto`
 --
 ALTER TABLE `itemfacturas`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `marca`
+--
+ALTER TABLE `marca`
+  ADD PRIMARY KEY (`id_marca`);
 
 --
 -- Indices de la tabla `orden_de_trabajo`
@@ -679,7 +771,11 @@ ALTER TABLE `repuesto`
 --
 ALTER TABLE `servicio`
   ADD PRIMARY KEY (`id_servicio`),
-  ADD KEY `idx_id_servicio` (`id_servicio`);
+  ADD KEY `idx_id_servicio` (`id_servicio`),
+  ADD KEY `matricula_fk` (`matricula_fk`),
+  ADD KEY `id_cliente` (`id_cliente`),
+  ADD KEY `id_empleado_fk` (`id_empleado_fk`),
+  ADD KEY `id_estado` (`id_estado`);
 
 --
 -- Indices de la tabla `tarifa_empleado`
@@ -706,11 +802,24 @@ ALTER TABLE `transacciones`
 --
 ALTER TABLE `vehiculo`
   ADD PRIMARY KEY (`matricula`),
-  ADD KEY `idx_id_cliente` (`id_cliente`);
+  ADD KEY `idx_id_cliente` (`id_cliente`),
+  ADD KEY `id_marca` (`id_marca`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
 --
+
+--
+-- AUTO_INCREMENT de la tabla `atributos`
+--
+ALTER TABLE `atributos`
+  MODIFY `id_atributo` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `atributo_vehiculo`
+--
+ALTER TABLE `atributo_vehiculo`
+  MODIFY `id_atributo_vehiculo` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `cliente`
@@ -722,19 +831,25 @@ ALTER TABLE `cliente`
 -- AUTO_INCREMENT de la tabla `compra_repuesto`
 --
 ALTER TABLE `compra_repuesto`
-  MODIFY `id_compra_repuesto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_compra_repuesto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_transaccion`
 --
 ALTER TABLE `detalle_transaccion`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=128;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=130;
 
 --
 -- AUTO_INCREMENT de la tabla `empleado`
 --
 ALTER TABLE `empleado`
   MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+
+--
+-- AUTO_INCREMENT de la tabla `estado`
+--
+ALTER TABLE `estado`
+  MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `facturas`
@@ -747,6 +862,12 @@ ALTER TABLE `facturas`
 --
 ALTER TABLE `itemfacturas`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `marca`
+--
+ALTER TABLE `marca`
+  MODIFY `id_marca` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `orden_de_trabajo`
@@ -782,11 +903,19 @@ ALTER TABLE `tipo_transaccion`
 -- AUTO_INCREMENT de la tabla `transacciones`
 --
 ALTER TABLE `transacciones`
-  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- Restricciones para tablas volcadas
 --
+
+--
+-- Filtros para la tabla `atributo_vehiculo`
+--
+ALTER TABLE `atributo_vehiculo`
+  ADD CONSTRAINT `atributo_vehiculo_ibfk_1` FOREIGN KEY (`matricula`) REFERENCES `vehiculo` (`matricula`),
+  ADD CONSTRAINT `atributo_vehiculo_ibfk_2` FOREIGN KEY (`id_atributo`) REFERENCES `atributos` (`id_atributo`),
+  ADD CONSTRAINT `atributo_vehiculo_ibfk_3` FOREIGN KEY (`id_atributo_vehiculo`) REFERENCES `estados_atributo` (`id_estado_atributo_fk`);
 
 --
 -- Filtros para la tabla `compra_repuesto`
@@ -806,13 +935,6 @@ ALTER TABLE `concepto_cobro`
 --
 ALTER TABLE `concepto_pago`
   ADD CONSTRAINT `fk_compra_repuesto` FOREIGN KEY (`id_compra_repuesto`) REFERENCES `compra_repuesto` (`id_compra_repuesto`);
-
---
--- Filtros para la tabla `detalles_servicio`
---
-ALTER TABLE `detalles_servicio`
-  ADD CONSTRAINT `detalles_servicio_ibfk_1` FOREIGN KEY (`id_order`) REFERENCES `orden_de_trabajo` (`id_order`),
-  ADD CONSTRAINT `detalles_servicio_ibfk_2` FOREIGN KEY (`id_servicio`) REFERENCES `servicio` (`id_servicio`);
 
 --
 -- Filtros para la tabla `detalle_repuesto`
@@ -860,6 +982,15 @@ ALTER TABLE `pago_realizado`
   ADD CONSTRAINT `pago_realizado_ibfk_1` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id_empleado`);
 
 --
+-- Filtros para la tabla `servicio`
+--
+ALTER TABLE `servicio`
+  ADD CONSTRAINT `servicio_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
+  ADD CONSTRAINT `servicio_ibfk_2` FOREIGN KEY (`matricula_fk`) REFERENCES `vehiculo` (`matricula`),
+  ADD CONSTRAINT `servicio_ibfk_3` FOREIGN KEY (`id_empleado_fk`) REFERENCES `empleado` (`id_empleado`),
+  ADD CONSTRAINT `servicio_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estado` (`id_estado`);
+
+--
 -- Filtros para la tabla `tarifa_empleado`
 --
 ALTER TABLE `tarifa_empleado`
@@ -875,7 +1006,7 @@ ALTER TABLE `transacciones`
 -- Filtros para la tabla `vehiculo`
 --
 ALTER TABLE `vehiculo`
-  ADD CONSTRAINT `vehiculo_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`);
+  ADD CONSTRAINT `vehiculo_ibfk_1` FOREIGN KEY (`id_marca`) REFERENCES `marca` (`id_marca`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -1,31 +1,23 @@
-import CompraRepuesto from './CompraRepuesto.js';
-import Repuesto from './Repuesto.js';
-import Proveedor from './Proveedor.js';
+import Cliente from './Cliente.js';
+import Vehiculo from './Vehiculo.js';
+import Diagnostico from './Diagnostico.js';
+import Factura from './Factura.js';
+import ItemFactura from './ItemFactura.js';
 
-// Definir relaciones
-export const setupAsso = () => {
-  // Una compra pertenece a un proveedor
-  CompraRepuesto.belongsTo(Repuesto, { 
-    foreignKey: 'id_repuesto', // Nombre de la columna clave foránea en CompraRepuesto
-    as: 'repuesto' // Alias para la inclusión, ¡IMPORTANTE!
-});
+const setupAsso = () => {
+  // Relación Cliente - Vehiculo
+  Cliente.hasMany(Vehiculo, { foreignKey: 'id_cliente' });
+  Vehiculo.belongsTo(Cliente, { foreignKey: 'id_cliente', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-// Y probablemente también necesites la relación con Proveedor para que tus inclusiones en la UI funcionen:
-CompraRepuesto.belongsTo(Proveedor, { 
-    foreignKey: 'id_proveedor', // Nombre de la columna clave foránea en CompraRepuesto
-    as: 'proveedor' // Alias para la inclusión, ¡IMPORTANTE!
-});
+  // Relación Vehiculo - Diagnostico
+  Vehiculo.hasMany(Diagnostico, { foreignKey: 'id_vehiculo' });
+  Diagnostico.belongsTo(Vehiculo, { foreignKey: 'id_vehiculo' });
 
-  // Un proveedor tiene muchas compras
-  Proveedor.hasMany(CompraRepuesto, {
-    foreignKey: 'id_proveedor',
-    as: 'compras'
-  });
-
-  // Un repuesto tiene muchas compras
-  Repuesto.hasMany(CompraRepuesto, {
-    foreignKey: 'id_repuesto',
-    as: 'compras'
-  });
+  // --- NUEVAS ASOCIACIONES DE FACTURACIÓN ---
+  Cliente.hasMany(Factura, { foreignKey: 'ClienteId' });
+  Factura.belongsTo(Cliente, { foreignKey: 'ClienteId', as: 'Cliente' });
+  Factura.hasMany(ItemFactura, { foreignKey: 'FacturaId', as: 'ItemFacturas' });
+  ItemFactura.belongsTo(Factura, { foreignKey: 'FacturaId' });
 };
+
 export default setupAsso;

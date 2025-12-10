@@ -76,6 +76,12 @@
                   title="Anular Factura">
                   <i class="bi bi-x-circle"></i>
                 </button>
+                <a v-if="factura.pdfPath" class="btn btn-sm btn-outline-secondary" :href="toPublicUrl(factura.pdfPath)" target="_blank" title="Descargar PDF">
+                  <i class="bi bi-filetype-pdf"></i>
+                </a>
+                <button v-else class="btn btn-sm btn-outline-secondary" @click="generarPdf(factura.id)" title="Generar PDF">
+                  <i class="bi bi-file-earmark-plus"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -95,6 +101,12 @@ const filtros = ref({
   nombre: ''
 });
 
+const showNotification = (message, type = 'info') => {
+  // En una app real, esto podría ser un sistema de "toasts" más sofisticado.
+  console.log(`[${type.toUpperCase()}] ${message}`);
+  alert(message);
+};
+
 const API_BASE = 'http://localhost:3000/api';
 
 const fetchFacturas = async () => {
@@ -113,7 +125,7 @@ const fetchFacturas = async () => {
   } catch (error) {
     console.error("Error al cargar facturas desde el backend:", error);
     facturas.value = []; // Asegurar que facturas esté vacío en caso de error
-    alert("No se pudieron cargar las facturas. Revise la conexión con el servidor.");
+    showNotification("No se pudieron cargar las facturas. Revise la conexión con el servidor.", "error");
   } finally {
     loading.value = false;
   }
@@ -137,10 +149,10 @@ const limpiarFiltros = () => {
 };
 
 const anularFactura = async (id) => {
-  if (confirm('¿Está seguro de que desea ANULAR esta factura? Esta acción no se puede deshacer.')) {
+  if (confirm(`¿Está seguro de que desea ANULAR la factura #${id}? Esta acción no se puede deshacer.`)) {
     try {
       const response = await fetch(`${API_BASE}/facturas/${id}`, {
-        method: 'PATCH',
+        method: 'PATCH', // Usamos PATCH para actualizar el estado a "Anulada"
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'Anulada' })
       });
@@ -149,10 +161,10 @@ const anularFactura = async (id) => {
         throw new Error(data.message || 'Error en la respuesta de la API');
       }
       await fetchFacturas();
-      alert('Factura anulada correctamente.');
+      showNotification(`Factura #${id} anulada correctamente.`, 'success');
     } catch (error) {
       console.error("Error al anular la factura:", error);
-      alert('Error: No se pudo anular la factura.');
+      showNotification(`Error: No se pudo anular la factura #${id}.`, 'error');
     }
   }
 };
@@ -169,10 +181,10 @@ const cambiarEstado = async (id, nuevoEstado) => {
       throw new Error(data.message || 'Error en la respuesta de la API');
     }
     await fetchFacturas();
-    alert(`Estado de la factura cambiado a ${nuevoEstado}.`);
+    showNotification(`El estado de la factura #${id} se cambió a ${nuevoEstado}.`, 'success');
   } catch (error) {
     console.error("Error al cambiar estado:", error);
-    alert('Error: No se pudo cambiar el estado de la factura.');
+    showNotification(`Error: No se pudo cambiar el estado de la factura #${id}.`, 'error');
   }
 };
 
@@ -181,15 +193,17 @@ const getMoneda = (factura) => factura.metodoPago === 'Divisas' ? '$' : 'Bs';
 const verDetalles = (factura) => {
   const monedaSimbolo = getMoneda(factura);
   const detallesItems = factura.ItemFacturas.map(item => 
-    `- ${item.descripcion} (Cant: ${item.cantidad}, Precio: ${monedaSimbolo}${parseFloat(item.precio).toFixed(2)})`
+    `  - ${item.descripcion}\n    (Cant: ${item.cantidad}, P/U: ${monedaSimbolo}${parseFloat(item.precio).toFixed(2)})`
   ).join('\n');
 
   alert(
     `Detalles de la Factura #${factura.id}\n\n` +
-    `Cliente: ${factura.Cliente.nombre} ${factura.Cliente.apellido}\n` +
-    `Cédula: ${factura.Cliente.cedula}\n` +
-    `Total: ${monedaSimbolo}${parseFloat(factura.total).toFixed(2)}\n\n` +
-    `Productos/Servicios:\n${detallesItems}`
+    `================================\n` +
+    `Cliente:  ${factura.Cliente.nombre} ${factura.Cliente.apellido}\n` +
+    `Cédula:   ${factura.Cliente.cedula}\n` +
+    `Total:    ${monedaSimbolo}${parseFloat(factura.total).toFixed(2)}\n\n` +
+    `PRODUCTOS Y SERVICIOS:\n` +
+    `${detallesItems}`
   );
 };
 
@@ -202,9 +216,28 @@ const getEstadoClass = (estado) => {
   }
 };
 
+const toPublicUrl = (pdfPath) => pdfPath.startsWith('http') ? pdfPath : `http://localhost:3000${pdfPath}`;
+
+const generarPdf = async (id) => {
+  try {
+    const response = await fetch(`${API_BASE}/facturas/${id}/pdf`, { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || `Error HTTP: ${response.status}`);
+    }
+    await fetchFacturas();
+    const url = toPublicUrl(data.url);
+    window.open(url, '_blank');
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    showNotification('No se pudo generar el PDF. Intente de nuevo.', 'error');
+  }
+};
+
 onMounted(() => {
   // fetchFacturas(); // Ya no se llama aquí, se llama desde el padre
 });
+
 
 defineExpose({ fetchFacturas });
 </script>

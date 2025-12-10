@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Importación de Rutas
 import authRoutes from './routes/auth.js';
@@ -20,12 +22,22 @@ import database from './config/database.js';
 import setupAssociations from './models/AssociationsTransacciones.js';
 import setupAsso from './models/associations.js';
 import error from '../red/errors.js';
+// Importar modelos para que Sequelize los registre antes de las asociaciones
+import './models/Cliente.js';
+import './models/Factura.js';
+import './models/ItemFactura.js';
+
 
 const { sequelize } = database;
 
 // ==================== INICIALIZACIÓN ====================
 const app = express();
 const PORT = 3000;
+
+// Resolver __dirname y configurar directorio de facturas
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const invoicesDir = path.join(__dirname, 'public', 'invoices');
 
 // ==================== MIDDLEWARES ====================
 // Habilita CORS para permitir que tu app Vue se conecte
@@ -35,6 +47,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Para ver logs de las peticiones en la consola (muy útil para depurar)
 app.use(morgan('dev'));
+
+// Servir PDFs generados
+app.use('/invoices', express.static(invoicesDir));
 
 // ==================== RUTAS DE LA API ====================
 app.use('/api/auth', authRoutes);
@@ -67,7 +82,7 @@ async function startServer() {
     // 3. Sincronizar la base de datos
     console.log('🔄 Sincronizando modelos con la base de datos...');
     // Usar { alter: true } en desarrollo para ajustar tablas sin borrar datos.
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
     console.log('✅ Modelos sincronizados con la base de datos.');
 
     // 4. Iniciar el servidor
