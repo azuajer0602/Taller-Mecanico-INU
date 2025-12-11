@@ -15,6 +15,7 @@ import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
 import fallasRoutes from './routes/fallasRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
 import atributosRoutes from './routes/atributosRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 import facturaRoutes from './routes/facturaRoutes.js';
 import proveedoresRoutes from './routes/proveedoresRoutes.js';
 import Compras from './routes/compraRepuestosRoutes.js' // ¡NUEVA RUTA PARA FACTURAS!
@@ -63,6 +64,7 @@ app.use('/api/repuestos', repuestosRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/compras', Compras);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/marcas', marcaRoutes)
 app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
 app.use('/api/atributos', atributosRoutes);
