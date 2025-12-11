@@ -4,50 +4,46 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
+
+// IMPORTAR MODELOS
 import Cliente from '../models/Cliente.js';
 import Factura from '../models/Factura.js';
 import ItemFactura from '../models/ItemFactura.js';
+import Servicio from '../models/Servicio.js';
+import Repuesto from '../models/Repuesto.js';
+import Transaccion from '../models/Transaccion.js';
+import DetalleTransaccion from '../models/DetalleTransaccion.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const invoicesDir = path.join(__dirname, '..', 'public', 'invoices');
-// Asumimos que el logo está en la carpeta 'src/assets'
 const logoPath = path.join(__dirname, '..', '..', 'assets', 'logo.png');
 
 export const facturaController = {
 
-  // POST /api/facturas - Crear una nueva factura completa (Cliente, Factura, Items)
+  // 1. CREAR FACTURA
   async create(req, res) {
-    const t = await sequelize.transaction();
+    const t = await sequelize.transaction(); 
     try {
-      const { cliente, factura, items } = req.body;
+      const { cliente, factura, items, id_servicio } = req.body;
 
-      // --- 1. Validaciones ---
       if (!cliente || !factura || !items || items.length === 0) {
-        return res.status(400).json({ success: false, message: 'Datos incompletos para crear la factura.' });
+        throw new Error('Datos incompletos.');
       }
 
-      // --- 2. Manejar Cliente (Crear o Actualizar) ---
+      // --- CLIENTE ---
       let clienteGuardado;
       if (cliente.id_cliente) {
-        // Si el cliente ya existe, lo buscamos
-        clienteGuardado = await Cliente.findByPk(cliente.id_cliente);
-        if (!clienteGuardado) {
-            throw new Error(`El cliente con ID ${cliente.id_cliente} no fue encontrado.`);
-        }
-      } else {
-        // Si no existe, lo creamos
-        clienteGuardado = await Cliente.create({
-          nombre: cliente.nombre,
-          apellido: cliente.apellido,
-          cedula: cliente.cedula,
-          correo: cliente.correo,
-          direccion: cliente.direccion,
-          telefono: cliente.telefono,
+        clienteGuardado = await Cliente.findByPk(cliente.id_cliente, { transaction: t });
+        await clienteGuardado.update({
+            nombre: cliente.nombre, apellido: cliente.apellido,
+            direccion: cliente.direccion, telefono: cliente.telefono, correo: cliente.correo
         }, { transaction: t });
+      } else {
+        clienteGuardado = await Cliente.create(cliente, { transaction: t });
       }
 
-      // --- 3. Crear Factura ---
+      // --- FACTURA ---
       const nuevaFactura = await Factura.create({
         ClienteId: clienteGuardado.id_cliente,
         fechaPago: factura.fechaPago,
@@ -56,265 +52,214 @@ export const facturaController = {
         metodoPago: factura.metodoPago,
       }, { transaction: t });
 
-      // --- 4. Crear Items de la Factura ---
-      const itemsParaGuardar = items.map(item => ({
-        ...item,
-        FacturaId: nuevaFactura.id,
-      }));
+      // --- ITEMS Y STOCK ---
+      const itemsParaGuardar = [];
+      let totalRepuestos = 0;
+      let totalServicios = 0;
 
+      for (const item of items) {
+          const subtotal = parseFloat(item.cantidad) * parseFloat(item.precio);
+          
+          itemsParaGuardar.push({
+              descripcion: item.descripcion,
+              cantidad: item.cantidad,
+              precio: item.precio,
+              FacturaId: nuevaFactura.id
+          });
+
+          if (item.id_repuesto) {
+              totalRepuestos += subtotal;
+              const repuesto = await Repuesto.findByPk(item.id_repuesto, { transaction: t });
+              if (repuesto) {
+                  if (repuesto.stock_inventario < item.cantidad) {
+                      throw new Error(`Stock insuficiente para: ${repuesto.nombre_repuesto}`);
+                  }
+                  await repuesto.decrement('stock_inventario', { by: item.cantidad, transaction: t });
+              }
+          } else {
+              totalServicios += subtotal;
+          }
+      }
+      
       await ItemFactura.bulkCreate(itemsParaGuardar, { transaction: t });
 
-      // --- 5. Confirmar Transacción ---
+      // --- SERVICIO ---
+      if (id_servicio) {
+          const servicio = await Servicio.findByPk(id_servicio, { transaction: t });
+          if (servicio) {
+              servicio.entrega = 'Entregado';
+              servicio.fecha_salida = new Date();
+              await servicio.save({ transaction: t });
+          }
+      }
+
+      // =================================================================================
+      // --- CONTABILIDAD ---
+      // =================================================================================
+      
+      // 1. Cabecera Transacción
+      // ID 22 (Venta Mercancía) como genérico de la operación
+      const nuevaTrx = await Transaccion.create({
+          fecha_asiento: new Date(),
+          descripcion_asiento: `Factura #${nuevaFactura.id} - ${clienteGuardado.nombre} ${clienteGuardado.apellido}`,
+          id_tipo_transaccion_fk: 22 
+      }, { transaction: t });
+
+      // 2. Determinar cuenta del DEBE (Destino del dinero)
+      let idCuentaDebe = 0;
+      let descDebe = '';
+
+      if (factura.estado === 'Pagado') {
+          const esBanco = ['Pago Móvil', 'Punto de Venta', 'Transferencia'].includes(factura.metodoPago);
+          if (esBanco) {
+              idCuentaDebe = 3; // Banco
+              descDebe = `Ingreso Banco (${factura.metodoPago})`;
+          } else {
+              idCuentaDebe = 2; // Caja
+              descDebe = `Ingreso Caja (${factura.metodoPago})`;
+          }
+      } else {
+          idCuentaDebe = 37; // Cuentas por Cobrar
+          descDebe = `CxC Cliente: ${clienteGuardado.nombre}`;
+      }
+
+      // 3. Registrar el DEBE
+      await DetalleTransaccion.create({
+          id_transaccion: nuevaTrx.id_transaccion,
+          id_tipo_transaccion_fk: idCuentaDebe, // <--- CORRECCIÓN: Aquí pasamos el ID que faltaba (2, 3 o 37)
+          descripcion_detalle: descDebe,
+          debe: factura.total, 
+          haber: 0,
+          es_cuenta_por_cobrar: factura.estado === 'Pendiente' ? 1 : 0,
+          es_cuenta_por_pagar: 0,
+          fecha_vencimiento: factura.estado === 'Pendiente' ? new Date(Date.now() + 30*24*60*60*1000) : null,
+          Tipo_de_pago: factura.metodoPago
+      }, { transaction: t });
+
+      // 4. Registrar el HABER (Origen del ingreso)
+      
+      // A. Por Repuestos
+      if (totalRepuestos > 0) {
+          await DetalleTransaccion.create({
+              id_transaccion: nuevaTrx.id_transaccion,
+              id_tipo_transaccion_fk: 22, // <--- CORRECCIÓN: ID 22 (Venta Mercancía)
+              descripcion_detalle: 'Ingreso por Venta de Repuestos',
+              debe: 0,
+              haber: totalRepuestos,
+              es_cuenta_por_cobrar: 0, es_cuenta_por_pagar: 0, Tipo_de_pago: 'N/A'
+          }, { transaction: t });
+      }
+
+      // B. Por Servicios
+      if (totalServicios > 0) {
+          await DetalleTransaccion.create({
+              id_transaccion: nuevaTrx.id_transaccion,
+              id_tipo_transaccion_fk: 23, // <--- CORRECCIÓN: ID 23 (Servicios Profesionales)
+              descripcion_detalle: 'Ingreso por Servicios Mecánicos',
+              debe: 0,
+              haber: totalServicios,
+              es_cuenta_por_cobrar: 0, es_cuenta_por_pagar: 0, Tipo_de_pago: 'N/A'
+          }, { transaction: t });
+      }
+
       await t.commit();
 
       res.status(201).json({
         success: true,
-        message: 'Factura creada exitosamente.',
-        data: {
-          id: nuevaFactura.id,
-          ...factura,
-          cliente: clienteGuardado
-        }
+        message: 'Factura procesada correctamente.',
+        data: { id: nuevaFactura.id }
       });
 
     } catch (error) {
       await t.rollback();
-      console.error('Error al crear la factura:', error);
-      res.status(500).json({ success: false, message: 'Error interno del servidor al crear la factura.', error: error.message });
+      console.error('Error Facturación:', error);
+      res.status(500).json({ success: false, message: error.message });
     }
   },
 
-  // GET /api/facturas - Obtener todas las facturas
-  async findAll(req, res) {
-    try {
-      const facturas = await Factura.findAll({
-        include: [
-          {
-            model: Cliente,
-            as: 'Cliente',
-            attributes: ['id_cliente', 'nombre', 'apellido', 'cedula', 'correo', 'telefono']
-          },
-          {
-            model: ItemFactura,
-            as: 'ItemFacturas',
-            attributes: ['id', 'descripcion', 'cantidad', 'precio']
-          }
-        ],
-        order: [['fechaPago', 'DESC']],
-      });
-
-      res.json({ success: true, data: facturas });
-    } catch (error) {
-      console.error('Error al obtener facturas:', error);
-      res.status(500).json({ success: false, message: 'Error interno del servidor al obtener facturas.', error: error.message });
-    }
-  },
-
-  // GET /api/facturas/:id - Obtener una factura por ID
-  async findById(req, res) {
-    try {
-      const { id } = req.params;
-      const factura = await Factura.findByPk(id, {
-        include: [
-          {
-            model: Cliente,
-            as: 'Cliente',
-            attributes: ['nombre', 'apellido', 'cedula', 'correo', 'telefono']
-          },
-          {
-            model: ItemFactura,
-            as: 'ItemFacturas',
-            attributes: ['descripcion', 'cantidad', 'precio']
-          }
-        ]
-      });
-
-      if (!factura) {
-        return res.status(404).json({ success: false, message: 'Factura no encontrada.' });
-      }
-
-      res.json({ success: true, data: factura });
-    } catch (error) {
-      console.error(`Error al obtener factura ${req.params.id}:`, error);
-      res.status(500).json({ success: false, message: 'Error interno del servidor.', error: error.message });
-    }
-  },
-
-  // PATCH /api/facturas/:id - Actualizar una factura (ej. cambiar estado)
-  async update(req, res) {
-    const t = await sequelize.transaction();
-    try {
-      const { id } = req.params;
-      const { estado } = req.body;
-
-      if (!estado) {
-        return res.status(400).json({ success: false, message: 'No se proporcionó un estado para actualizar.' });
-      }
-
-      const factura = await Factura.findByPk(id);
-
-      if (!factura) {
-        return res.status(404).json({ success: false, message: 'Factura no encontrada.' });
-      }
-
-      factura.estado = estado;
-      await factura.save({ transaction: t });
-
-      await t.commit();
-
-      res.json({ success: true, message: 'Factura actualizada exitosamente.', data: factura });
-
-    } catch (error) {
-      await t.rollback();
-      console.error(`Error al actualizar factura ${req.params.id}:`, error);
-      res.status(500).json({ success: false, message: 'Error interno del servidor al actualizar.', error: error.message });
-    }
-  },
-
-  // POST /api/facturas/:id/pdf - Generar y guardar PDF, actualizar ruta en BD
+  // 2. GENERAR PDF
   async generatePdf(req, res) {
     try {
       const { id } = req.params;
       const factura = await Factura.findByPk(id, {
-        include: [
-          { model: Cliente, as: 'Cliente' },
-          { model: ItemFactura, as: 'ItemFacturas' }
-        ]
+        include: [{ model: Cliente, as: 'Cliente' }, { model: ItemFactura, as: 'ItemFacturas' }]
       });
 
-      if (!factura) {
-        return res.status(404).json({ success: false, message: 'Factura no encontrada.' });
-      }
+      if (!factura) return res.status(404).json({ success: false, message: 'No encontrada' });
 
-      // Asegurar directorio
-      if (!fs.existsSync(invoicesDir)) {
-        fs.mkdirSync(invoicesDir, { recursive: true });
-      }
+      if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
 
-      const safeName = `${factura.Cliente.nombre}_${factura.Cliente.apellido}`.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const fileName = `Factura_${factura.id}_${safeName}.pdf`;
+      const fileName = `Factura_${factura.id}.pdf`;
       const filePath = path.join(invoicesDir, fileName);
-
-      // --- INICIO DE LA CREACIÓN DEL PDF CON DISEÑO MEJORADO ---
       const doc = new PDFDocument({ size: 'A4', margin: 50 });
       const writeStream = fs.createWriteStream(filePath);
+      
       doc.pipe(writeStream);
 
-      // --- Colores y Fuentes ---
-      const primaryColor = '#0D6EFD'; // Azul Bootstrap
-      const secondaryColor = '#6C757D'; // Gris Bootstrap
-      const tableHeaderBg = '#F2F2F2';
-      const tableBorderColor = '#DDDDDD';
+      if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 45, { width: 80 });
+      
+      doc.fontSize(20).text('FACTURA', 400, 50, { align: 'right' });
+      doc.fontSize(10).text(`#${factura.id}`, 400, 75, { align: 'right' });
+      
+      doc.text(`Cliente: ${factura.Cliente.nombre} ${factura.Cliente.apellido}`, 50, 130);
+      doc.text(`CI/RIF: ${factura.Cliente.cedula}`, 50, 145);
+      doc.text(`Fecha: ${new Date(factura.fechaPago).toLocaleDateString()}`, 400, 130, { align: 'right' });
+      
+      let y = 200;
+      doc.rect(50, y, 500, 20).fill('#eee').stroke();
+      doc.fillColor('#000').text('Descripción', 60, y+5);
+      doc.text('Cant', 320, y+5);
+      doc.text('Precio', 380, y+5);
+      doc.text('Total', 460, y+5);
+      
+      y += 25;
+      const moneda = factura.metodoPago === 'Divisas' ? '$' : 'Bs';
 
-      // --- Encabezado del PDF ---
-      const headerY = 50;
-      if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, 50, headerY, { width: 100 });
-      }
-      doc.fillColor(primaryColor).fontSize(20).text('MECANOSOFT', 200, headerY + 15, { align: 'right' });
-      doc.fillColor(secondaryColor).fontSize(10).text('Servicio de Reparación de Vehículos', 200, headerY + 40, { align: 'right' });
-
-      // --- Información de la Factura ---
-      const infoY = headerY + 80;
-      doc.fillColor('#000').fontSize(20).text('FACTURA', 50, infoY);
-      doc.strokeColor(primaryColor).lineWidth(2).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-      doc.moveDown(1.5);
-
-      const customerInfoY = doc.y;
-      doc.fontSize(10).fillColor(secondaryColor).text('FACTURAR A:', 50, customerInfoY);
-      doc.fillColor('#000').fontSize(12).text(`${factura.Cliente.nombre} ${factura.Cliente.apellido}`, 50, customerInfoY + 15)
-        .fontSize(10).text(`C.I: ${factura.Cliente.cedula}`)
-        .text(factura.Cliente.correo)
-        .text(factura.Cliente.telefono);
-
-      doc.fontSize(10).fillColor(secondaryColor).text('Nº FACTURA:', 400, customerInfoY);
-      doc.fillColor('#000').fontSize(12).text(factura.id, 400, customerInfoY + 15, { align: 'right' });
-
-      doc.fontSize(10).fillColor(secondaryColor).text('FECHA:', 400, customerInfoY + 35);
-      doc.fillColor('#000').fontSize(12).text(new Date(factura.fechaPago).toLocaleDateString(), 400, customerInfoY + 50, { align: 'right' });
-
-      doc.y = customerInfoY + 80; // Mover hacia abajo para la tabla
-
-      // --- Tabla de Items ---
-      const tableTop = doc.y;
-      const monedaSimbolo = factura.metodoPago === 'Divisas' ? '$' : 'Bs';
-      const itemX = 50;
-      const qtyX = 320;
-      const priceX = 380;
-      const totalX = 460;
-
-      // Función para dibujar fila de la tabla
-      function drawTableRow(y, c1, c2, c3, c4, isHeader = false) {
-        doc.fontSize(isHeader ? 10 : 9);
-        if (isHeader) {
-          doc.fillColor('#000').font('Helvetica-Bold');
-        } else {
-          doc.fillColor(secondaryColor).font('Helvetica');
-        }
-        doc.text(c1, itemX, y, { width: 260 });
-        doc.text(c2, qtyX, y, { width: 50, align: 'center' });
-        doc.text(c3, priceX, y, { width: 70, align: 'right' });
-        doc.text(c4, totalX, y, { width: 80, align: 'right' });
-      }
-
-      // Dibujar encabezado de la tabla
-      doc.rect(50, tableTop, 500, 20).fill(tableHeaderBg);
-      drawTableRow(tableTop + 6, 'Descripción', 'Cantidad', 'Precio Unitario', 'Subtotal', true);
-
-      let y = tableTop + 25;
-      // Dibujar filas de items
       factura.ItemFacturas.forEach(item => {
-        const subtotal = Number(item.cantidad) * Number(item.precio);
-        drawTableRow(
-          y,
-          item.descripcion,
-          String(item.cantidad),
-          `${monedaSimbolo} ${Number(item.precio).toFixed(2)}`,
-          `${monedaSimbolo} ${subtotal.toFixed(2)}`
-        );
-        y += 20;
-        doc.strokeColor(tableBorderColor).moveTo(50, y - 5).lineTo(550, y - 5).stroke();
+          const totalItem = parseFloat(item.cantidad) * parseFloat(item.precio);
+          doc.text(item.descripcion, 60, y);
+          doc.text(item.cantidad, 320, y);
+          doc.text(`${moneda} ${item.precio}`, 380, y);
+          doc.text(`${moneda} ${totalItem.toFixed(2)}`, 460, y);
+          y += 20;
       });
-
-      // --- Totales ---
-      const totalY = y + 10;
-      doc.font('Helvetica-Bold').fontSize(12).fillColor(primaryColor);
-      doc.text('TOTAL:', 350, totalY, { align: 'right', width: 100 });
-      doc.text(`${monedaSimbolo} ${Number(factura.total).toFixed(2)}`, 450, totalY, { align: 'right', width: 90 });
-
-      doc.moveDown(2);
-      doc.font('Helvetica').fontSize(10).fillColor(secondaryColor);
-      doc.text(`Método de Pago: ${factura.metodoPago}`, { align: 'right' });
-      doc.text(`Estado: ${factura.estado}`, { align: 'right' });
-
-      // --- Pie de Página ---
-      doc.fontSize(8).fillColor(secondaryColor).text('¡Gracias por su confianza!', 50, 750, { align: 'center', width: 500 });
-      doc.text('Mecanosoft - RIF: J-12345678-9 - Teléfono: (0412) 123-4567', 50, 760, { align: 'center', width: 500 });
+      
+      doc.fontSize(14).text(`TOTAL: ${moneda} ${factura.total}`, 400, y+20, { align: 'right', bold: true });
+      doc.fontSize(10).text(`Método: ${factura.metodoPago}`, 50, y+20);
+      doc.text(`Estado: ${factura.estado}`, 50, y+35);
 
       doc.end();
-      // --- FIN DE LA CREACIÓN DEL PDF ---
 
-      writeStream.on('finish', async () => {
-        const publicUrl = `/invoices/${fileName}`;
-        factura.pdfPath = publicUrl;
-        await factura.save();
-        res.json({ success: true, message: 'PDF generado y guardado correctamente.', url: publicUrl });
+      writeStream.on('finish', () => {
+        res.json({ success: true, url: `/invoices/${fileName}` });
       });
 
-      writeStream.on('error', (err) => {
-        console.error('Error escribiendo PDF:', err);
-        res.status(500).json({ success: false, message: 'No se pudo generar el PDF.' });
-      });
-
-    } catch (error) {
-      console.error('Error al generar PDF:', error);
-      res.status(500).json({ success: false, message: 'Error interno al generar PDF.', error: error.message });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ success: false, message: e.message });
     }
   },
 
-  // DELETE /api/facturas/:id - Eliminar una factura (anulación lógica)
-  // Por seguridad, en lugar de borrar, la marcamos como "Anulada"
-  async delete(req, res) {
-      return this.update(req, res);
-  }
+  // 3. OTROS MÉTODOS
+  async findAll(req, res) {
+      try {
+        const facturas = await Factura.findAll({ include: ['Cliente'], order: [['id', 'DESC']] });
+        res.json({ success: true, data: facturas });
+      } catch (e) {
+        res.status(500).json({message: e.message});
+      }
+  },
+
+  async findById(req, res) {
+      try {
+        const f = await Factura.findByPk(req.params.id, { include: ['Cliente', 'ItemFacturas'] });
+        if(!f) return res.status(404).json({message: 'No existe'});
+        res.json({ success: true, data: f });
+      } catch (e) {
+        res.status(500).json({message: e.message});
+      }
+  },
+
+  async update(req, res) { /* ... */ },
+  async delete(req, res) { /* ... */ }
 };

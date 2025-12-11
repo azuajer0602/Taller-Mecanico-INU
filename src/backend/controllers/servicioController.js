@@ -7,7 +7,7 @@ import Empleado from '../models/Empleado.js';
 
 export const servicioController = {
     
-    // 1. Listar Servicios (Ahora trae datos reales de empleado)
+    // 1. Listar Servicios
     async findAll(req, res) {
         try {
             const servicios = await Servicio.findAll({
@@ -26,17 +26,15 @@ export const servicioController = {
             });
             res.json({ success: true, data: servicios });
         } catch (error) {
-            console.error(error);
             res.status(500).json({ success: false, message: error.message });
         }
     },
 
-    // 2. Obtener Empleados (Mecánicos reales de la BD)
+    // 2. Obtener lista de Mecánicos
     async getMecanicos(req, res) {
         try {
-            // Filtramos por cargo si es necesario, o traemos todos
             const mecanicos = await Empleado.findAll({
-                where: { cargo: 'Mecánico' } // Ajusta este string según guardes en tu BD
+                where: { cargo: 'Mecánico' } 
             });
             res.json({ success: true, data: mecanicos });
         } catch (error) {
@@ -44,7 +42,7 @@ export const servicioController = {
         }
     },
 
-    // 3. Asignar Mecánico
+    // 3. Asignar Mecánico (Admin)
     async asignar(req, res) {
         const { id } = req.params;
         const { id_empleado } = req.body;
@@ -61,32 +59,65 @@ export const servicioController = {
         }
     },
 
-    // 4. Cambiar Estado (Lógica de Mano de Obra)
+    // 4. Cambiar Estado (USO DEL MECÁNICO)
+    // Lógica: Solo mueve id_estado y mano_obra. NO TOCA fecha_salida.
     async cambiarEstado(req, res) {
         const { id } = req.params;
         const { nuevo_estado, mano_obra } = req.body; 
-        // 1: Espera, 2: Reparación, 3: Reparado
-
+        
         try {
             const servicio = await Servicio.findByPk(id);
             if (!servicio) return res.status(404).json({ message: 'Servicio no encontrado' });
 
-            // Lógica de transición
-            if (nuevo_estado === 3) {
-                // Si pasa a Reparado, guardamos la mano de obra y fecha salida
-                servicio.mano_obra = mano_obra;
-                servicio.fecha_salida = new Date();
-                servicio.entrega = 'No entregado'; // Aún no se le da al cliente
-            } else if (nuevo_estado === 2 && servicio.id_estado === 3) {
-                // Si nos DEVOLVEMOS de Reparado a Reparación (hubo error), borramos mano de obra
-                servicio.mano_obra = null;
-                servicio.fecha_salida = null;
+            const estadoActual = servicio.id_estado;
+
+            // Transición: En Reparación (2) -> Listo (3)
+            if (estadoActual === 2 && nuevo_estado === 3) {
+                if (!mano_obra || mano_obra <= 0) {
+                    return res.status(400).json({ message: 'Se requiere el costo de mano de obra.' });
+                }
+                servicio.id_estado = 3;
+                servicio.mano_obra = mano_obra; 
+                // NO se toca fecha_salida ni entrega aquí
+            } 
+            // Transición: Listo (3) -> En Reparación (2) (Reverso por corrección)
+            else if (estadoActual === 3 && nuevo_estado === 2) {
+                servicio.id_estado = 2;
+                servicio.mano_obra = null; // Se limpia la mano de obra
+            }
+            // Transición: Pendiente (1) -> En Reparación (2)
+            else if (estadoActual === 1 && nuevo_estado === 2) {
+                servicio.id_estado = 2;
+            }
+            else {
+                // Permitir actualización simple si no viola reglas lógicas
+                servicio.id_estado = nuevo_estado;
             }
 
-            servicio.id_estado = nuevo_estado;
             await servicio.save();
+            res.json({ success: true, message: 'Estado actualizado correctamente' });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+    // 5. Entregar / Facturar (USO DE ADMINISTRACIÓN)
+    // Lógica: Cierra el ciclo, marca como entregado y PONE LA FECHA DE SALIDA.
+    async entregar(req, res) {
+        const { id } = req.params;
+        try {
+            const servicio = await Servicio.findByPk(id);
+            if (!servicio) return res.status(404).json({ message: 'Servicio no encontrado' });
+
+            if (servicio.id_estado !== 3) {
+                return res.status(400).json({ message: 'El vehículo debe estar reparado (Listo) para poder entregarlo.' });
+            }
+
+            servicio.entrega = 'Entregado';
+            servicio.fecha_salida = new Date(); // <--- AQUÍ ES DONDE SE GUARDA LA FECHA
             
-            res.json({ success: true, message: 'Estado actualizado' });
+            await servicio.save();
+            res.json({ success: true, message: 'Vehículo entregado y fecha de salida registrada.' });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }

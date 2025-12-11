@@ -23,9 +23,9 @@ const nuevaOperacion = ref({
   fecha: obtenerFechaLocal(),
   fechaVencimiento: '', 
   id_tipo_transaccion: '', 
-  metodoPago: 'Bolívares'
+  metodoPago: 'Bolívares en efectivo'
 });
-const metodosPago = ['Bolívares', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
+const metodosPago = ['Bolívares en efectivo', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
 
 // --- COMPUTED ---
 const tipoSeleccionado = computed(() => {

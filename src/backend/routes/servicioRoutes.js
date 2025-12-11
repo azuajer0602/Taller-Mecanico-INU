@@ -15,4 +15,6 @@ router.put('/:id/asignar', servicioController.asignar);
 // 4. Cambiar estado y registrar mano de obra (Mecánico)
 router.put('/:id/estado', servicioController.cambiarEstado);
 
+router.put('/:id/entregar', servicioController.entregar);    // Ruta Admin (Facturación)
+
 export default router;

@@ -21,7 +21,7 @@ const obtenerFechaLocal = () => {
 };
 
 // Métodos de pago (igual que en gestión y gastos)
-const metodosPago = ['Bolívares', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
+const metodosPago = ['Bolívares en efectivo', 'Punto de Venta', 'Pago Móvil', 'Transferencia', 'Crédito'];
 
 // Modelo del formulario de compra (ampliado)
 const nuevaCompra = ref({

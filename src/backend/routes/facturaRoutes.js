@@ -3,19 +3,19 @@ import { facturaController } from '../controllers/facturaController.js';
 
 const router = express.Router();
 
-// POST /api/facturas -> Crear una nueva factura
+// Crear
 router.post('/', facturaController.create);
 
-// GET /api/facturas -> Obtener todas las facturas
+// Listar todas (Esta era la que fallaba antes)
 router.get('/', facturaController.findAll);
 
-// GET /api/facturas/:id -> Obtener una factura específica por su ID
+// Obtener una
 router.get('/:id', facturaController.findById);
 
-// PATCH /api/facturas/:id -> Actualizar el estado de una factura (pagar, anular, etc.)
+// Actualizar estado
 router.patch('/:id', facturaController.update);
 
-// POST /api/facturas/:id/pdf -> Generar y guardar el PDF de la factura
+// Generar PDF
 router.post('/:id/pdf', facturaController.generatePdf);
 
 export default router;
