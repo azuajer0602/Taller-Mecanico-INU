@@ -18,6 +18,7 @@
             <span>Jefe de Taller</span>
           </div>
         </div>
+        
       </header>
 
       <!-- Métricas Principales -->
