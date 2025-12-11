@@ -153,6 +153,14 @@ const handleLogout = () => {
             <span class="nav-text">Registro de repuestos</span>
           </router-link>
         </li>
+
+        <li v-if="!authStore.isMecanico">
+          <router-link to="analisisventas" class="nav-link" :class="{ active: $route.path === 'analisisventas' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-cog"></i>
+            <span class="nav-text">Reportes</span>
+          </router-link>
+        </li>
+        
         <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }" @click.prevent="handleLogout(); closeSidebar()">
           <i class="nav-icon fas fa-sign-out-alt"></i>
           <span class="nav-text">Salir</span>

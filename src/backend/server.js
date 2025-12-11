@@ -25,6 +25,7 @@ import setupAssociations from './models/AssociationsTransacciones.js';
 import setupAsso from './models/associations.js';
 import error from '../red/errors.js';
 import servicioRoutes from './routes/servicioRoutes.js';
+import reportesRoutes from './routes/reportesRoutes.js';
 // Importar modelos para que Sequelize los registre antes de las asociaciones
 import './models/Cliente.js';
 import './models/Factura.js';
@@ -67,6 +68,7 @@ app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
 app.use('/api/atributos', atributosRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
 app.use('/api/transacciones', transaccionRoutes);
+app.use('/api/reportes', reportesRoutes);
 app.use('/api/facturas', facturaRoutes); // ¡NUEVA RUTA PARA FACTURAS!
 app.use('/api/servicios', servicioRoutes);
 // ==================== MANEJO DE ERRORES CENTRALIZADO ====================
@@ -88,7 +90,7 @@ async function startServer() {
     // 3. Sincronizar la base de datos
     console.log('🔄 Sincronizando modelos con la base de datos...');
     // Usar { alter: true } en desarrollo para ajustar tablas sin borrar datos.
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ force: false });
     console.log('✅ Modelos sincronizados con la base de datos.');
 
     // 4. Iniciar el servidor

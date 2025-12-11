@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth'
 
 // ... tus importaciones de componentes ...
 import Login from '../views/login.vue'
+import AnalisisVentasView from '../views/AnalisisVentasView.vue'
 import RegistroEmpleados from '../views/registro_empleados.vue'
 import Inicio from '../components/SidebarComponent.vue'
 import Dash from '../components/DashboardComponent.vue'
@@ -41,7 +42,8 @@ const routes = [
      { path: '/fallas', component: FallasView, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
      { path: '/atributos', component: atributos, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
      { path: '/serviciosadmin', component: serviciosadmin, meta: { requiresAuth: true, allowedRoles: ['administrador'] }},
-     { path: '/serviciosempleado', component: serviciosempleado, meta: { requiresAuth: true, allowedRoles: ['mecanico'] }}
+     { path: '/serviciosempleado', component: serviciosempleado, meta: { requiresAuth: true, allowedRoles: ['mecanico'] }},
+      { path: '/analisisventas', component:  AnalisisVentasView, meta: { requiresAuth: true, allowedRoles: ['administrador'] }}
 
      
 ]
