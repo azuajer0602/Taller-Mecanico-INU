@@ -2,11 +2,47 @@
 import Side from '../components/SidebarComponent.vue';
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 // Importaciones para PDF
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const API_BASE = 'http://localhost:3000/api';
+const authStore = useAuthStore();
+
 const API_BASE_URL = 'http://localhost:3000/api/repuestos';
+
+const usuarioIniciales = computed(() => {
+  if (!authStore.user) return 'A';
+  
+  const nombreCompleto = authStore.user.nombre_emp || authStore.user.nombre || '';
+  
+  if (!nombreCompleto) {
+    return (authStore.user.usuario || 'A').charAt(0).toUpperCase();
+  }
+  
+  const partes = nombreCompleto.split(' ');
+  if (partes.length >= 2) {
+    return `${partes[0].charAt(0)}${partes[1].charAt(0)}`.toUpperCase();
+  } else {
+    return partes[0].charAt(0).toUpperCase();
+  }
+});
+
+const nombreCompleto = computed(() => {
+  if (!authStore.user) return 'Administrador';
+  
+  return authStore.user.nombre_emp || 
+         authStore.user.nombre || 
+         authStore.user.usuario || 
+         'Administrador';
+});
+
+// Computed para el cargo
+const usuarioCargo = computed(() => {
+  if (!authStore.user || !authStore.user.cargo) return 'MecanoSoft';
+  return authStore.user.cargo;
+});
 
 // --- ESTADOS ---
 const repuestos = ref([]);
@@ -114,10 +150,10 @@ onMounted(() => {
             <p class="page-subtitle">Lista completa de repuestos disponibles en el taller</p>
           </div>
           <div class="user-profile">
-            <div class="avatar-circle">A</div>
+            <div class="avatar-circle">{{ usuarioIniciales }}</div>
             <div>
-              <div class="user-name">Administrador</div>
-              <div class="user-role">MecanoSoft</div>
+              <div class="user-name">{{ nombreCompleto }}</div>
+              <div class="user-role">{{ usuarioCargo }}</div>
             </div>
           </div>
         </div>

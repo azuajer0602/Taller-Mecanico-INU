@@ -1,5 +1,46 @@
 <script setup>
 import Side from '../components/SidebarComponent.vue';
+import { ref, reactive, computed, onMounted } from 'vue';
+import { useAuthStore } from '../stores/auth';
+
+const API_BASE = 'http://localhost:3000/api';
+const authStore = useAuthStore();
+
+// --- ESTADOS ---
+
+
+const usuarioIniciales = computed(() => {
+  if (!authStore.user) return 'A';
+  
+  const nombreCompleto = authStore.user.nombre_emp || authStore.user.nombre || '';
+  
+  if (!nombreCompleto) {
+    return (authStore.user.usuario || 'A').charAt(0).toUpperCase();
+  }
+  
+  const partes = nombreCompleto.split(' ');
+  if (partes.length >= 2) {
+    return `${partes[0].charAt(0)}${partes[1].charAt(0)}`.toUpperCase();
+  } else {
+    return partes[0].charAt(0).toUpperCase();
+  }
+});
+
+const nombreCompleto = computed(() => {
+  if (!authStore.user) return 'Administrador';
+  
+  return authStore.user.nombre_emp || 
+         authStore.user.nombre || 
+         authStore.user.usuario || 
+         'Administrador';
+});
+
+// Computed para el cargo
+const usuarioCargo = computed(() => {
+  if (!authStore.user || !authStore.user.cargo) return 'MecanoSoft';
+  return authStore.user.cargo;
+});
+
 </script>
 
 <template>
@@ -21,8 +62,8 @@ import Side from '../components/SidebarComponent.vue';
               <i class="fas fa-user-tie"></i>
             </div>
             <div class="user-info d-none d-md-block">
-              <span class="user-name">Admin Taller</span>
-              <span class="user-role">Gerente</span>
+              <span class="user-name">{{ nombreCompleto }}</span>
+              <span class="user-role">{{usuarioCargo}}</span>
             </div>
           </div>
         </div>

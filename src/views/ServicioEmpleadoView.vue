@@ -1,19 +1,23 @@
 <script setup>
 import Side from '../components/SidebarComponent.vue';
 import { ref, onMounted, computed, reactive } from 'vue';
+import { useAuthStore } from '../stores/auth'; // Importa el store de autenticación
 
 const API_BASE = 'http://localhost:3000/api';
+const authStore = useAuthStore(); // Usa el store
 const servicios = ref([]);
 const mecanicos = ref([]);
-const miId = ref(null);
+
+// El ID del usuario ya viene del store
+const miId = ref(authStore.user?.id || null);
 
 // Control de Modales
 const modalVisible = ref(false);
-const modalStep = ref(1); // 1: Confirmación, 2: Input Mano Obra
+const modalStep = ref(1);
 const accionPendiente = reactive({
   idServicio: null,
   nuevoEstado: null,
-  esReversion: false, // True si pasamos de 3 a 2
+  esReversion: false,
   titulo: '',
   mensaje: '',
   manoObraInput: 0
@@ -21,50 +25,65 @@ const accionPendiente = reactive({
 
 const misServicios = computed(() => {
   if (!miId.value) return [];
-  // Mostramos estado 1 (espera) y 2 (reparacion)
-  return servicios.value.filter(s => s.id_empleado_fk === miId.value && s.id_estado !== 3);
+  // Solo mostrar servicios asignados al mecánico actual
+  return servicios.value.filter(s => s.id_empleado_fk === miId.value);
 });
 
 const serviciosDisponibles = computed(() => {
-  // Estado 1 y sin mecánico
+  // Mostrar servicios en espera (estado 1) que no tienen mecánico asignado
   return servicios.value.filter(s => !s.id_empleado_fk && s.id_estado === 1);
 });
 
 const cargarDatos = async () => {
   try {
-    const [resServ, resMec] = await Promise.all([
+    const [resServ] = await Promise.all([
       fetch(`${API_BASE}/servicios`),
-      fetch(`${API_BASE}/servicios/mecanicos`)
     ]);
     const dS = await resServ.json();
-    const dM = await resMec.json();
     if(dS.success) servicios.value = dS.data;
-    if(dM.success) mecanicos.value = dM.data;
-  } catch (e) { console.error(e); }
+    
+    // Verificar que el usuario esté autenticado
+    if (!authStore.isAuthenticated) {
+      console.error("Usuario no autenticado");
+      // Redirigir al login si no está autenticado
+      window.location.href = '/login';
+      return;
+    }
+    
+    // Asignar automáticamente el ID del usuario logeado
+    if (authStore.user && authStore.user.id) {
+      miId.value = authStore.user.id;
+    }
+    
+  } catch (e) { 
+    console.error(e); 
+  }
 };
 
 // 1. INICIAR FLUJO DE CAMBIO DE ESTADO
 const solicitarCambioEstado = (servicio, nuevoEstado) => {
+  // Verificar que el usuario esté logeado
+  if (!miId.value) {
+    alert("Debes estar autenticado para realizar esta acción");
+    return;
+  }
+  
   accionPendiente.idServicio = servicio.id_servicio;
   accionPendiente.nuevoEstado = nuevoEstado;
   accionPendiente.manoObraInput = 0;
-  modalStep.value = 1; // Reseteamos al paso 1 (Confirmación)
+  modalStep.value = 1;
 
-  // LOGICA DE MENSAJES Y FLUJO
   if (nuevoEstado === 2 && servicio.id_estado === 1) {
-    // Iniciar Reparación
     accionPendiente.titulo = '¿Iniciar Reparación?';
     accionPendiente.mensaje = 'El vehículo pasará a estado "En Reparación".';
     accionPendiente.esReversion = false;
   } 
   else if (nuevoEstado === 3 && servicio.id_estado === 2) {
-    // Finalizar Trabajo
     accionPendiente.titulo = '¿Finalizar Reparación?';
     accionPendiente.mensaje = 'Se marcará como reparado. Luego deberás ingresar el costo de mano de obra.';
     accionPendiente.esReversion = false;
   }
   else if (nuevoEstado === 2 && servicio.id_estado === 3) {
-    // REVERTIR (Hubo error)
     accionPendiente.titulo = '¿Revertir a Reparación?';
     accionPendiente.mensaje = '⚠️ ADVERTENCIA: Se borrará el costo de mano de obra registrado anteriormente. ¿Deseas continuar?';
     accionPendiente.esReversion = true;
@@ -75,11 +94,9 @@ const solicitarCambioEstado = (servicio, nuevoEstado) => {
 
 // 2. CONFIRMAR ACCIÓN
 const confirmarPaso1 = async () => {
-  // Si vamos a finalizar (Estado 3), vamos al paso 2 (Input Precio)
   if (accionPendiente.nuevoEstado === 3) {
     modalStep.value = 2; 
   } else {
-    // Si es cualquier otro cambio, ejecutamos directamente
     ejecutarCambio();
   }
 };
@@ -87,13 +104,20 @@ const confirmarPaso1 = async () => {
 // 3. EJECUTAR LLAMADA API
 const ejecutarCambio = async () => {
   try {
+    // Agregar token de autenticación a la solicitud
+    const token = authStore.token;
+    
     const payload = {
       nuevo_estado: accionPendiente.nuevoEstado,
       mano_obra: accionPendiente.nuevoEstado === 3 ? accionPendiente.manoObraInput : null
     };
 
     const res = await fetch(`${API_BASE}/servicios/${accionPendiente.idServicio}/estado`, {
-      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      method: 'PUT', 
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify(payload)
     });
 
@@ -103,28 +127,58 @@ const ejecutarCambio = async () => {
     } else {
       alert("Error al actualizar");
     }
-  } catch(e) { alert("Error de conexión"); }
+  } catch(e) { 
+    alert("Error de conexión"); 
+  }
 };
 
-// Tomar servicio (Sin modal complejo, solo confirmación simple de navegador)
+// Tomar servicio
 const tomarServicio = async (idServicio) => {
-  if(!miId.value) { alert("Selecciona quién eres primero"); return; }
+  if(!miId.value) { 
+    alert("Debes estar autenticado para tomar un servicio"); 
+    return; 
+  }
+  
   if(!confirm("¿Tomar este servicio?")) return;
   try {
+    const token = authStore.token;
+    
+    // Asignar servicio al mecánico actual
     await fetch(`${API_BASE}/servicios/${idServicio}/asignar`, {
-      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      method: 'PUT', 
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ id_empleado: miId.value })
     });
-    // Auto iniciar
+    
+    // Auto iniciar el servicio
     await fetch(`${API_BASE}/servicios/${idServicio}/estado`, {
-      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      method: 'PUT', 
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ nuevo_estado: 2 })
     });
+    
     cargarDatos();
-  } catch(e) { alert("Error"); }
+  } catch(e) { 
+    alert("Error al tomar servicio"); 
+  }
 };
 
-onMounted(cargarDatos);
+onMounted(() => {
+  // Verificar autenticación antes de cargar datos
+  if (!authStore.isAuthenticated || !authStore.isMecanico) {
+    alert("Acceso denegado. Debes ser un mecánico autenticado.");
+    window.location.href = '/login';
+    return;
+  }
+  
+  cargarDatos();
+});
 </script>
 
 <template>
@@ -138,26 +192,32 @@ onMounted(cargarDatos);
           <p class="page-subtitle">Gestiona tus reparaciones</p>
         </div>
         <div class="bg-white p-2 rounded shadow-sm border d-flex align-items-center gap-2">
-          <small class="fw-bold text-muted">Soy:</small>
-          <select v-model="miId" class="form-select form-select-sm">
-            <option :value="null">-- Seleccionar Usuario --</option>
-            <option v-for="m in mecanicos" :key="m.id_empleado" :value="m.id_empleado">
-              {{ m.nombre_emp }} {{ m.apellido_emp }}
-            </option>
-          </select>
+          <small class="fw-bold text-muted">Usuario:</small>
+          <span class="fw-bold text-primary">
+            {{ authStore.user?.nombre || authStore.user?.nombre_emp || 'Usuario' }}
+            {{ authStore.user?.apellido_emp || '' }}
+          </span>
+          <small class="badge bg-info ms-2">
+            {{ authStore.user?.cargo || 'Mecánico' }}
+          </small>
         </div>
       </div>
 
-      <div v-if="!miId" class="alert alert-info text-center">
-        <i class="fas fa-user-lock me-2"></i> Selecciona tu usuario arriba para ver tus trabajos.
+      <div v-if="!miId" class="alert alert-warning text-center">
+        <i class="fas fa-exclamation-triangle me-2"></i> 
+        No se pudo cargar tu información de usuario. Por favor, <a href="/login" class="alert-link">inicia sesión nuevamente</a>.
       </div>
 
       <div v-else class="row g-4">
         
         <div class="col-lg-7">
-          <h5 class="fw-bold mb-3 text-primary"><i class="fas fa-wrench me-2"></i>Mis Reparaciones</h5>
-          <div v-if="misServicios.length === 0" class="text-muted fst-italic py-3">
-            No tienes trabajos asignados.
+          <h5 class="fw-bold mb-3 text-primary">
+            <i class="fas fa-wrench me-2"></i>Mis Reparaciones Activas
+            <span class="badge bg-primary ms-2">{{ misServicios.length }}</span>
+          </h5>
+          <div v-if="misServicios.length === 0" class="text-center py-5">
+            <i class="fas fa-tools fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No tienes trabajos asignados actualmente.</p>
           </div>
 
           <div v-for="s in misServicios" :key="s.id_servicio" class="card mb-3 shadow-sm border-0 border-start border-5 border-primary">
@@ -166,9 +226,10 @@ onMounted(cargarDatos);
                 <div>
                   <h4 class="mb-0 fw-bold">{{ s.vehiculo.matricula }}</h4>
                   <div class="text-muted small">{{ s.vehiculo.marca_detalle.nombre_marca }} {{ s.vehiculo.modelo }}</div>
+                  <small class="text-muted">Fecha: {{ new Date(s.fecha_ingreso).toLocaleDateString() }}</small>
                 </div>
                 <span class="badge" :class="s.id_estado === 1 ? 'bg-warning text-dark' : 'bg-primary'">
-                  {{ s.id_estado === 1 ? 'Esperando inicio' : 'En Reparación' }}
+                  {{ s.id_estado === 1 ? 'Pendiente' : 'En Reparación' }}
                 </span>
               </div>
               
@@ -178,12 +239,22 @@ onMounted(cargarDatos);
               </div>
 
               <div class="mt-3 d-flex gap-2">
-                <button v-if="s.id_estado === 1" @click="solicitarCambioEstado(s, 2)" class="btn btn-primary w-100 fw-bold">
+                <button v-if="s.id_estado === 1" 
+                        @click="solicitarCambioEstado(s, 2)" 
+                        class="btn btn-primary w-100 fw-bold">
                   <i class="fas fa-play me-2"></i>Iniciar Reparación
                 </button>
 
-                <button v-if="s.id_estado === 2" @click="solicitarCambioEstado(s, 3)" class="btn btn-success w-100 fw-bold">
+                <button v-if="s.id_estado === 2" 
+                        @click="solicitarCambioEstado(s, 3)" 
+                        class="btn btn-success w-100 fw-bold">
                   <i class="fas fa-check-double me-2"></i>Finalizar Trabajo
+                </button>
+                
+                <button v-if="s.id_estado === 3" 
+                        disabled
+                        class="btn btn-secondary w-100">
+                  <i class="fas fa-check me-2"></i>Completado
                 </button>
               </div>
             </div>
@@ -192,15 +263,28 @@ onMounted(cargarDatos);
 
         <div class="col-lg-5">
           <div class="content-card bg-white p-3 shadow-sm h-100">
-            <h6 class="fw-bold mb-3 text-muted text-uppercase"><i class="fas fa-inbox me-2"></i>Disponibles</h6>
-            <div v-if="serviciosDisponibles.length === 0" class="text-center py-4 text-muted small">No hay vehículos en espera.</div>
+            <h6 class="fw-bold mb-3 text-muted text-uppercase">
+              <i class="fas fa-inbox me-2"></i>Servicios Disponibles
+              <span class="badge bg-secondary ms-2">{{ serviciosDisponibles.length }}</span>
+            </h6>
+            <div v-if="serviciosDisponibles.length === 0" class="text-center py-4 text-muted small">
+              <i class="fas fa-check-circle fa-2x mb-3"></i>
+              <p>No hay vehículos en espera.</p>
+            </div>
             <div v-for="s in serviciosDisponibles" :key="s.id_servicio" class="p-3 border rounded mb-2 hover-bg-light">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <div class="fw-bold">{{ s.vehiculo.matricula }}</div>
                   <div class="small text-danger">{{ s.falla.nombre_falla }}</div>
+                  <div class="small text-muted">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ new Date(s.fecha_ingreso).toLocaleDateString() }}
+                  </div>
                 </div>
-                <button @click="tomarServicio(s.id_servicio)" class="btn btn-sm btn-outline-primary">Tomar</button>
+                <button @click="tomarServicio(s.id_servicio)" 
+                        class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-hand-paper me-1"></i>Tomar
+                </button>
               </div>
             </div>
           </div>
@@ -208,6 +292,7 @@ onMounted(cargarDatos);
 
       </div>
 
+      <!-- Modal -->
       <div v-if="modalVisible" class="modal-backdrop fade show"></div>
       <div v-if="modalVisible" class="modal fade show d-block" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -229,7 +314,12 @@ onMounted(cargarDatos);
               <label class="form-label fw-bold text-success">💰 Costo de Mano de Obra ($)</label>
               <div class="input-group input-group-lg">
                 <span class="input-group-text">$</span>
-                <input v-model="accionPendiente.manoObraInput" type="number" class="form-control" placeholder="0.00" min="0">
+                <input v-model="accionPendiente.manoObraInput" 
+                       type="number" 
+                       class="form-control" 
+                       placeholder="0.00" 
+                       min="0"
+                       step="0.01">
               </div>
               <small class="text-muted">Ingrese el valor final del servicio técnico.</small>
             </div>
@@ -237,11 +327,18 @@ onMounted(cargarDatos);
             <div class="modal-footer bg-light">
               <button type="button" class="btn btn-secondary" @click="modalVisible = false">Cancelar</button>
               
-              <button v-if="modalStep === 1" type="button" class="btn fw-bold" :class="accionPendiente.esReversion ? 'btn-danger' : 'btn-primary'" @click="confirmarPaso1">
+              <button v-if="modalStep === 1" 
+                      type="button" 
+                      class="btn fw-bold" 
+                      :class="accionPendiente.esReversion ? 'btn-danger' : 'btn-primary'" 
+                      @click="confirmarPaso1">
                 {{ accionPendiente.nuevoEstado === 3 ? 'Sí, continuar' : 'Confirmar Cambio' }}
               </button>
 
-              <button v-if="modalStep === 2" type="button" class="btn btn-success fw-bold" @click="ejecutarCambio">
+              <button v-if="modalStep === 2" 
+                      type="button" 
+                      class="btn btn-success fw-bold" 
+                      @click="ejecutarCambio">
                 <i class="fas fa-save me-2"></i>Guardar y Finalizar
               </button>
             </div>
@@ -255,13 +352,39 @@ onMounted(cargarDatos);
 </template>
 
 <style scoped>
-/* CSS base */
-.dashboard-container { display: flex; min-height: 100vh; background-color: #f3f6f9; font-family: 'Poppins', sans-serif; }
-.main-content { flex: 1; padding: 2rem; margin-left: 250px; }
-.hover-bg-light:hover { background-color: #f8f9fa; }
-.card { transition: transform 0.2s; }
-.card:hover { transform: translateY(-3px); }
-/* Modal Backdrop Fix */
-.modal-backdrop { opacity: 0.5; z-index: 1040; }
-.modal { z-index: 1050; }
+.dashboard-container { 
+  display: flex; 
+  min-height: 100vh; 
+  background-color: #f3f6f9; 
+  font-family: 'Poppins', sans-serif; 
+}
+.main-content { 
+  flex: 1; 
+  padding: 2rem; 
+  margin-left: 250px; 
+}
+.hover-bg-light:hover { 
+  background-color: #f8f9fa; 
+  cursor: pointer; 
+  transition: background-color 0.2s;
+}
+.card { 
+  transition: transform 0.2s; 
+  border-radius: 10px;
+}
+.card:hover { 
+  transform: translateY(-5px); 
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.modal-backdrop { 
+  opacity: 0.5; 
+  z-index: 1040; 
+}
+.modal { 
+  z-index: 1050; 
+}
+.content-card {
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+}
 </style>

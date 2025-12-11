@@ -1,13 +1,49 @@
 <script setup>
 import Side from '../components/SidebarComponent.vue';
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useAuthStore } from '../stores/auth';
 
 const API_BASE = 'http://localhost:3000/api';
+const authStore = useAuthStore();
 
 // --- ESTADOS ---
+
+
+const usuarioIniciales = computed(() => {
+  if (!authStore.user) return 'A';
+  
+  const nombreCompleto = authStore.user.nombre_emp || authStore.user.nombre || '';
+  
+  if (!nombreCompleto) {
+    return (authStore.user.usuario || 'A').charAt(0).toUpperCase();
+  }
+  
+  const partes = nombreCompleto.split(' ');
+  if (partes.length >= 2) {
+    return `${partes[0].charAt(0)}${partes[1].charAt(0)}`.toUpperCase();
+  } else {
+    return partes[0].charAt(0).toUpperCase();
+  }
+});
+
+const nombreCompleto = computed(() => {
+  if (!authStore.user) return 'Administrador';
+  
+  return authStore.user.nombre_emp || 
+         authStore.user.nombre || 
+         authStore.user.usuario || 
+         'Administrador';
+});
+
+// Computed para el cargo
+const usuarioCargo = computed(() => {
+  if (!authStore.user || !authStore.user.cargo) return 'MecanoSoft';
+  return authStore.user.cargo;
+});
+
+
 const vehiculos = ref([]);
 const listaMarcas = ref([]);
-
 // Estado del formulario
 const vehiculo = reactive({
   matricula: '', // Usamos matricula como ID
@@ -201,10 +237,10 @@ onMounted(cargarData);
             <p class="page-subtitle">Administra la flota y asignaciones de clientes</p>
           </div>
           <div class="user-profile">
-            <div class="avatar-circle">A</div>
+            <div class="avatar-circle">{{ usuarioIniciales }}</div>
             <div>
-              <div class="user-name">Administrador</div>
-              <div class="user-role">MecanoSoft</div>
+              <div class="user-name">{{nombreCompleto}}</div>
+              <div class="user-role">{{ usuarioCargo }}</div>
             </div>
           </div>
         </div>

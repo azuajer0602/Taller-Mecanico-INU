@@ -29,6 +29,10 @@ export const useAuthStore = defineStore('auth', {
     },
         userCargo: (state) => state.user ? state.user.cargo : null,
     },
+        nombreCompleto: (state) => {
+            if (!state.user) return '';
+            return state.user.nombre_emp || state.user.nombre || state.user.usuario || '';
+        },
 
     actions: {
         setAuthData(userData, token) {

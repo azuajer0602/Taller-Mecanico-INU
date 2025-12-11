@@ -31,36 +31,30 @@ const marcasFiltradas = computed(() => {
   );
 });
 
-// Computed para obtener iniciales del usuario
 const usuarioIniciales = computed(() => {
-  if (!authStore.user || !authStore.user.nombre) return 'A';
+  if (!authStore.user) return 'A';
   
-  const nombre = authStore.user.nombre || '';
-  const apellido = authStore.user.apellido || '';
+  const nombreCompleto = authStore.user.nombre_emp || authStore.user.nombre || '';
   
-  if (nombre && apellido) {
-    return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
-  } else if (nombre) {
-    return nombre.charAt(0).toUpperCase();
+  if (!nombreCompleto) {
+    return (authStore.user.usuario || 'A').charAt(0).toUpperCase();
   }
-  return 'A';
+  
+  const partes = nombreCompleto.split(' ');
+  if (partes.length >= 2) {
+    return `${partes[0].charAt(0)}${partes[1].charAt(0)}`.toUpperCase();
+  } else {
+    return partes[0].charAt(0).toUpperCase();
+  }
 });
 
-// Computed para nombre completo
 const nombreCompleto = computed(() => {
   if (!authStore.user) return 'Administrador';
   
-  const nombre = authStore.user.nombre || '';
-  const apellido = authStore.user.apellido || '';
-  
-  if (nombre && apellido) {
-    return `${nombre} ${apellido}`;
-  } else if (nombre) {
-    return nombre;
-  } else if (authStore.user.usuario) {
-    return authStore.user.usuario;
-  }
-  return 'Administrador';
+  return authStore.user.nombre_emp || 
+         authStore.user.nombre || 
+         authStore.user.usuario || 
+         'Administrador';
 });
 
 // Computed para el cargo
