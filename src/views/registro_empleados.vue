@@ -316,7 +316,7 @@ onMounted(() => {
                 <td data-label="Fecha Contratación">
                   <div class="text-dark">
                     <i class="fas fa-calendar-alt me-2 text-muted"></i>
-                    {{ emp.fecha_contratacion }}
+                    {{ emp.fecha_contratacion ? emp.fecha_contratacion.split('T')[0] : 'N/A' }}
                   </div>
                 </td>
                 <td data-label="Sueldo">

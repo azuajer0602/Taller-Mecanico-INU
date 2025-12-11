@@ -84,7 +84,8 @@ export const login = async (req, res) => {
             { 
                 id: empleado.id_empleado, 
                 usuario: empleado.usuario, 
-                cargo: empleado.cargo 
+                cargo: empleado.cargo,
+                nombre: empleado.nombre_emp 
             }, 
             JWT_SECRET, 
             { expiresIn: '10m' } 
@@ -95,7 +96,8 @@ export const login = async (req, res) => {
             empleado: { 
                 id: empleado.id_empleado, 
                 usuario: empleado.usuario,
-                cargo: empleado.cargo 
+                cargo: empleado.cargo,
+                nombre: empleado.nombre_emp  
             } 
         });
 
