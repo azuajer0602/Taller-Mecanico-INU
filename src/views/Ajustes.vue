@@ -82,6 +82,12 @@ const cargarRepuestos = async () => {
 };
 
 const submitForm = async () => {
+
+  const idRepuestoNumerico = Number(repuesto.id_repuesto); 
+  if (isNaN(idRepuestoNumerico) || idRepuestoNumerico <= 0) {
+    alert('El ID del repuesto debe ser un número válido y mayor a 0.');
+    return; 
+  }
   try {
     const datosParaEnviar = {
       id_repuesto: repuesto.id_repuesto,

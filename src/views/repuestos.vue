@@ -88,39 +88,64 @@ const exportarAPDF = async () => {
   }
 
   try {
+    // Obtener la imagen del logo como base64
+    const logoImg = document.getElementById('logo-img');
+    let logoBase64 = null;
+    
+    if (logoImg) {
+      const logoCanvas = await html2canvas(logoImg, {
+        scale: 1,
+        logging: false,
+        useCORS: true,
+        backgroundColor: '#FFFFFF'
+      });
+      logoBase64 = logoCanvas.toDataURL('image/png');
+    }
+
     const canvas = await html2canvas(tabla, {
       scale: 2,
       logging: false,
       useCORS: true,
+      backgroundColor: '#ffffff'
     });
 
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
     
+    // Agregar el logo si está disponible
+    if (logoBase64) {
+      pdf.addImage(logoBase64, 'PNG', 10, 10, 40, 35); // Ajusta tamaño y posición
+      pdf.setFontSize(18);
+      pdf.text("Inventario de Repuestos", 60, 25);
+    } else {
+      pdf.setFontSize(18);
+      pdf.text("Inventario de Repuestos", 105, 15, null, null, "center");
+    }
+    
+    pdf.setFontSize(10);
+    pdf.text(`Fecha: ${new Date().toLocaleDateString()} | Total: ${totalRepuestos.value} repuestos`, 105, 32, null, null, "center");
+
+    const imgData = canvas.toDataURL('image/png');
     const imgWidth = 190;
     const pageHeight = 295;
     const imgHeight = canvas.height * imgWidth / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 5;
-
-    pdf.setFontSize(18);
-    pdf.text("Inventario de Repuestos", 105, 15, null, null, "center");
-    pdf.setFontSize(10);
-    pdf.text(`Fecha: ${new Date().toLocaleDateString()} | Total: ${totalRepuestos.value} repuestos`, 105, 22, null, null, "center");
-
-    position = 30;
-
+    
+    // Posición después del header (logo + título)
+    let position = logoBase64 ? 45 : 40;
+    
     if (imgHeight < pageHeight - position) {
       pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
     } else {
       let currentPage = 1;
+      let heightLeft = imgHeight;
+      
       while (heightLeft >= 0) {
         if (currentPage > 1) {
           pdf.addPage();
-          position = 5;
+          position = 10;
         }
+        
         pdf.addImage(imgData, 'PNG', 10, position - heightLeft, imgWidth, imgHeight);
-        heightLeft -= (pageHeight - 10);
+        heightLeft -= (pageHeight - 20);
         currentPage++;
       }
     }
@@ -144,7 +169,11 @@ onMounted(() => {
     <div class="main-content">
       
       <div class="dashboard-header animate-fade-in">
+        
         <div class="header-content">
+          <div class="logo-container">
+        <img id="logo-img" src="../assets/logo.png" alt="Logo">
+      </div>
           <div>
             <h1 class="page-title">Inventario de Repuestos</h1>
             <p class="page-subtitle">Lista completa de repuestos disponibles en el taller</p>
@@ -281,6 +310,26 @@ onMounted(() => {
   font-family: 'Poppins', sans-serif;
 }
 
+.logo-container {
+  padding: 30px 20px 20px 20px;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 10px;
+}
+
+#logo-img {
+  width: 160px;
+  height: 140px;
+  object-fit: contain;
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  transition: transform 0.3s ease;
+}
+
+#logo-img:hover {
+  transform: scale(1.05);
+}
+
 .main-content {
   flex: 1;
   padding: 2rem;
@@ -403,5 +452,6 @@ onMounted(() => {
   .custom-table td::before {
     content: attr(data-label); font-weight: 600; color: #858796; font-size: 0.85rem;
   }
+  
 }
 </style>
