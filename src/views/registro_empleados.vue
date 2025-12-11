@@ -1,9 +1,11 @@
 <script setup>
 import Side from '../components/SidebarComponent.vue';
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
+import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:3000/api/auth';
+
 const authStore = useAuthStore();
 
 // --- ESTADOS ---
