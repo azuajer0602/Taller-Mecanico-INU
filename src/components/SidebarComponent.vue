@@ -1,7 +1,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { useRouter } from 'vue-router'; // Asegúrate de importar router si lo usas
+
 const authStore = useAuthStore();
+const router = useRouter();
 
 // Estado para controlar si el sidebar está abierto o cerrado en móvil
 const isSidebarOpen = ref(false);
@@ -16,13 +19,10 @@ const closeSidebar = () => {
 
 const handleLogout = () => {
   authStore.logout();
-   this.user = null;
-  this.token = null;
+  // Limpieza local (ajusta según tu lógica exacta)
   localStorage.clear();
-   setAuthHeader(null);
   router.push('/');
 }
-
 </script>
 
 <template>
@@ -48,120 +48,114 @@ const handleLogout = () => {
       
       <nav class="sidebar-nav">
         <router-link to="/dash" class="nav-link" :class="{ active: $route.path === '/dash' }" @click="closeSidebar">
-          <span class="nav-icon">🚗</span>
+          <i class="nav-icon fas fa-tachometer-alt"></i>
           <span class="nav-text">Dashboard</span>
         </router-link>
+
+ 
+
         <li v-if="!authStore.isMecanico">
-        <router-link to="/ajustes" class="nav-link" :class="{ active: $route.path === '/ajustes' }" @click="closeSidebar">
-          <span class="nav-icon">⚙️</span>
-          <span class="nav-text">Ajustes</span>
-        </router-link>
+          <router-link to="/compra" class="nav-link" :class="{ active: $route.path === '/compra' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-shopping-cart"></i>
+            <span class="nav-text">Compra Repuestos</span>
+          </router-link>
         </li>
 
         <li v-if="!authStore.isMecanico">
-        <router-link to="/compra" class="nav-link" :class="{ active: $route.path === '/compra' }" @click="closeSidebar">
-          <span class="nav-icon">🛒</span>
-          <span class="nav-text">Compra Repuestos</span>
-        </router-link>
-        </li>
-
-
-        <li v-if="!authStore.isMecanico">
-        <router-link to="/facturacion" class="nav-link" :class="{ active: $route.path === '/facturacion' }" @click="closeSidebar">
-          <span class="nav-icon">🧾</span>
-          <span class="nav-text">Facturación</span>
-        </router-link>
+          <router-link to="/facturacion" class="nav-link" :class="{ active: $route.path === '/facturacion' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-file-invoice-dollar"></i>
+            <span class="nav-text">Facturación</span>
+          </router-link>
         </li>
 
         <li v-if="!authStore.isMecanico">
-
-        <router-link to="/gestion-gastos" class="nav-link" :class="{ active: $route.path === '/gestion-gastos' }" @click="closeSidebar">
-          <span class="nav-icon">💸</span>
-          <span class="nav-text">Gestión y Gastos</span>
-        </router-link>
-        </li>
-        <li v-if="!authStore.isMecanico">
-        
-        <router-link to="/flujo-caja" class="nav-link" :class="{ active: $route.path === '/flujo-caja' }" @click="closeSidebar">
-          <span class="nav-icon">📈</span>
-          <span class="nav-text">Flujo de transacciones</span>
-        </router-link>
+          <router-link to="/gestion-gastos" class="nav-link" :class="{ active: $route.path === '/gestion-gastos' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-hand-holding-usd"></i>
+            <span class="nav-text">Gestión y Gastos</span>
+          </router-link>
         </li>
 
-             
         <li v-if="!authStore.isMecanico">
-         <router-link to="/serviciosadmin" class="nav-link" :class="{ active: $route.path === '/serviciosadmin' }" @click="closeSidebar">
-          <span class="nav-icon">🛠️</span>
-          <span class="nav-text">Servicios</span>
-        </router-link>                 
-      </li>
-         
-      <li v-if="!authStore.isAdmin">
+          <router-link to="/flujo-caja" class="nav-link" :class="{ active: $route.path === '/flujo-caja' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-chart-line"></i>
+            <span class="nav-text">Flujo de transacciones</span>
+          </router-link>
+        </li>
+
+        <li v-if="!authStore.isMecanico">
+          <router-link to="/serviciosadmin" class="nav-link" :class="{ active: $route.path === '/serviciosadmin' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-tools"></i>
+            <span class="nav-text">Servicios</span>
+          </router-link>                 
+        </li>
+          
+        <li v-if="!authStore.isAdmin">
            <router-link to="/serviciosempleado" class="nav-link" :class="{ active: $route.path === '/serviciosempleado' }" @click="closeSidebar">
-          <span class="nav-icon">🛠️</span>
-          <span class="nav-text">Servicios</span>
-        </router-link>
-           
-      </li>
+            <i class="nav-icon fas fa-wrench"></i>
+            <span class="nav-text">Servicios</span>
+          </router-link>
+        </li>
 
         <router-link to="/clientes" class="nav-link" :class="{ active: $route.path === '/clientes' }" @click="closeSidebar">
-          <span class="nav-icon">👥</span>
+          <i class="nav-icon fas fa-users"></i>
           <span class="nav-text">Clientes</span>
         </router-link>
 
-
         <li v-if="!authStore.isMecanico">
-        <router-link to="/regis_empleados" class="nav-link" :class="{ active: $route.path === '/regis_empleados' }" @click="closeSidebar">
-          <span class="nav-icon">👔</span>
-          <span class="nav-text">Empleados</span>
-        </router-link>
+          <router-link to="/regis_empleados" class="nav-link" :class="{ active: $route.path === '/regis_empleados' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-user-tie"></i>
+            <span class="nav-text">Empleados</span>
+          </router-link>
         </li>
         
         <router-link to="/registroVehiculo" class="nav-link" :class="{ active: $route.path === '/registroVehiculo' }" @click="closeSidebar">
-          <span class="nav-icon">🚗</span>
+          <i class="nav-icon fas fa-car"></i>
           <span class="nav-text">Registro de Vehículos</span>
         </router-link>
 
-
         <li v-if="!authStore.isMecanico">
-        <router-link to="/proveedores" class="nav-link" :class="{ active: $route.path === '/proveedores' }" @click="closeSidebar">
-          <span class="nav-icon">🚚</span>
-          <span class="nav-text">Proveedores</span>
-        </router-link>
+          <router-link to="/proveedores" class="nav-link" :class="{ active: $route.path === '/proveedores' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-truck-moving"></i>
+            <span class="nav-text">Proveedores</span>
+          </router-link>
         </li>
 
-         
         <li v-if="!authStore.isMecanico">
-        <router-link to="/marcas" class="nav-link" :class="{ active: $route.path === '/marcas' }" @click="closeSidebar">
-          <span class="nav-icon">🚚</span>
-          <span class="nav-text">Marcas</span>
-        </router-link>
+          <router-link to="/marcas" class="nav-link" :class="{ active: $route.path === '/marcas' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-tags"></i>
+            <span class="nav-text">Marcas</span>
+          </router-link>
         </li>
 
         <router-link to="/repuestos" class="nav-link" :class="{ active: $route.path === '/repuestos' }" @click="closeSidebar">
-          <span class="nav-icon">📦</span>
+          <i class="nav-icon fas fa-boxes"></i>
           <span class="nav-text">Inventario</span>
         </router-link>
         
         <router-link to="/diagnostico" class="nav-link" :class="{ active: $route.path === '/diagnostico' }" @click="closeSidebar">
-          <span class="nav-icon">🔧</span>
+          <i class="nav-icon fas fa-clipboard-check"></i>
           <span class="nav-text">Diagnóstico Técnico</span>
         </router-link>
 
-
         <router-link to="/fallas" class="nav-link" :class="{ active: $route.path === '/fallas' }" @click="closeSidebar">
-          <span class="nav-icon">🔧</span>
+          <i class="nav-icon fas fa-exclamation-triangle"></i>
           <span class="nav-text">Registro de Fallas</span>
         </router-link>
 
-         <router-link to="/atributos" class="nav-link" :class="{ active: $route.path === '/atributos' }" @click="closeSidebar">
-          <span class="nav-icon">🔧</span>
+        <router-link to="/atributos" class="nav-link" :class="{ active: $route.path === '/atributos' }" @click="closeSidebar">
+          <i class="nav-icon fas fa-list-ul"></i>
           <span class="nav-text">Registro de Partes</span>
         </router-link>
-
+        
+       <li v-if="!authStore.isMecanico">
+          <router-link to="/ajustes" class="nav-link" :class="{ active: $route.path === '/ajustes' }" @click="closeSidebar">
+            <i class="nav-icon fas fa-cog"></i>
+            <span class="nav-text">Registro de repuestos</span>
+          </router-link>
+        </li>
         <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }" @click.prevent="handleLogout(); closeSidebar()">
-          <span class="nav-icon">🚪</span>
-          <span span class="nav-text">Salir</span>
+          <i class="nav-icon fas fa-sign-out-alt"></i>
+          <span class="nav-text">Salir</span>
         </router-link>
       </nav>
     </div>
@@ -172,6 +166,11 @@ const handleLogout = () => {
 /* =========================================
    ESTILOS GENERALES
    ========================================= */
+/* Quitamos los estilos de lista (bullets) para que los <li> no tengan punto */
+li {
+  list-style: none;
+}
+
 .router-link-active,
 .nav-link {
   text-decoration: none;
@@ -183,7 +182,7 @@ const handleLogout = () => {
   height: 100vh;
   width: 280px;
   position: fixed;
-  z-index: 1001; /* Está DEBAJO del botón hamburguesa (1002) */
+  z-index: 1001; 
   top: 0;
   left: 0;
   background: #df8615;
@@ -233,6 +232,7 @@ const handleLogout = () => {
   overflow: hidden;
 }
 
+/* Efecto Hover Línea Vertical */
 .nav-link::before {
   content: '';
   position: absolute;
@@ -265,11 +265,13 @@ const handleLogout = () => {
   background: #ffffff;
 }
 
+/* Estilos de los Íconos */
 .nav-icon {
-  font-size: 20px;
+  font-size: 18px; /* Ajustado ligeramente para íconos vectoriales */
   margin-right: 15px;
   width: 24px;
   text-align: center;
+  display: inline-block;
 }
 
 .nav-text {
@@ -294,11 +296,11 @@ const handleLogout = () => {
    ESTILOS DEL BOTÓN HAMBURGUESA
    ========================================= */
 .hamburger-btn {
-  display: none; /* Oculto en PC */
+  display: none; 
   position: fixed;
   top: 15px;
   left: 15px;
-  z-index: 1002; /* Siempre visible por encima del sidebar */
+  z-index: 1002; 
   background: #df8615;
   border: none;
   border-radius: 8px;
@@ -365,14 +367,12 @@ const handleLogout = () => {
     display: block;
   }
 
-  /* Sidebar escondido a la izquierda */
   .sidebar {
     transform: translateX(-100%);
     width: 280px;
     box-shadow: none;
   }
 
-  /* Sidebar abierto (entra desde la izquierda) */
   .sidebar.mobile-open {
     transform: translateX(0);
     box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);

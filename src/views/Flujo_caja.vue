@@ -1,6 +1,6 @@
 <script setup>
 import Side from '../components/SidebarComponent.vue'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 // Importaciones de librerías externas
 import { jsPDF } from 'jspdf'
@@ -16,13 +16,17 @@ const metrics = ref({
   transaccionesMes: 0,
   cuentasPorCobrar: 0,
   cuentasPorPagar: 0,
-  dineroCaja: 0,    // Se llena si dice "Bolivares"
-  dineroBanco: 0    // Se llena si dice "Transferencia" o "Pago Movil"
+  dineroCaja: 0,    
+  dineroBanco: 0    
 })
 
 const transaccionesRecientes = ref([])
 const cuentasPorCobrar = ref([])
 const cuentasPorPagar = ref([])
+
+// Variables globales para gráficos (Chart.js)
+let chartFlujo = null
+let chartCategorias = null
 
 // --- 2. COMPUTED PROPERTIES ---
 
@@ -87,8 +91,7 @@ const obtenerCodigoTipo = (transaccion) => {
   return 'S/C'
 }
 
-
-// --- LÓGICA FINAL (CORREGIDO COBRAR vs PAGAR) ---
+// --- 5. CÁLCULO DE SALDOS (CAJA VS BANCO) ---
 const calcularSaldosPorMetodo = (data) => {
   let caja = 0;
   let banco = 0;
@@ -96,80 +99,54 @@ const calcularSaldosPorMetodo = (data) => {
   if (!data) return;
 
   data.forEach(t => {
-    // --- 1. DATOS BASE ---
+    // 1. Datos Base
     const tipoCuenta = (t.tipo_transaccion?.tipo_cuenta || "").toUpperCase().trim(); 
     const nombreTipo = (t.tipo_transaccion?.nombre_tipo || "").toLowerCase();
 
-    // --- 2. DETECTAR MÉTODO DE PAGO ---
+    // 2. Detectar Método
     const detalleConPago = t.detalles.find(d => d.Tipo_de_pago && d.Tipo_de_pago !== 'N/A');
     if (!detalleConPago) return; 
 
     const metodo = detalleConPago.Tipo_de_pago.toLowerCase().trim();
     const descripcionDetalle = (detalleConPago.descripcion_detalle || "").toLowerCase();
 
-    // --- 3. CLASIFICAR ORIGEN (CAJA vs BANCO) ---
+    // 3. Clasificar Origen
     const esCaja = ['bolívares', 'bolivares', 'efectivo', 'divisa', 'usd', 'caja'].some(m => metodo.includes(m));
     const esBanco = ['pago móvil', 'pago movil', 'transferencia', 'punto', 'zelle', 'banco', 'tarjeta', 'débito', 'debito'].some(m => metodo.includes(m));
 
     if (!esCaja && !esBanco) return;
 
-    // --- 4. CALCULAR MONTO ---
+    // 4. Calcular Monto
     const montoOperacion = t.detalles.reduce((sum, d) => sum + parseFloat(d.debe || 0), 0);
 
-    // --- 5. LÓGICA DE SIGNOS (PRIORIDAD A COBRAR/PAGAR) ---
+    // 5. Signos (+/-)
     let multiplicador = 0;
 
-    // REGLA 1: Si dice explícitamente "COBRAR" en el nombre (ej: "Cuenta por Cobrar", "Cobro Cliente")
-    // Significa que entra dinero -> SUMA
-    if (nombreTipo.includes('cobrar')) {
-        multiplicador = 1;
-    }
-    // REGLA 2: Si dice explícitamente "PAGAR" en el nombre (ej: "Cuenta por Pagar", "Pago Proveedor")
-    // Significa que sale dinero -> RESTA
-    else if (nombreTipo.includes('pagar')) {
-        multiplicador = -1;
-    }
-    // REGLA 3: Si es Ingreso/Venta puro -> SUMA
-    else if (['INGRESO', 'VENTA', 'COBRO'].includes(tipoCuenta)) {
-        multiplicador = 1; 
-    }
-    // REGLA 4: Si es Gasto/Egreso/Activo/Pasivo estándar -> RESTA
-    else if (['GASTO', 'EGRESO', 'COMPRA', 'PAGO', 'PASIVO', 'ACTIVO'].includes(tipoCuenta)) {
-        multiplicador = -1;
-    }
-    // REGLA 5: Capital (Aporte de socios) -> SUMA
+    if (nombreTipo.includes('cobrar')) multiplicador = 1;
+    else if (nombreTipo.includes('pagar')) multiplicador = -1;
+    else if (['INGRESO', 'VENTA', 'COBRO'].includes(tipoCuenta)) multiplicador = 1; 
+    else if (['GASTO', 'EGRESO', 'COMPRA', 'PAGO', 'PASIVO', 'ACTIVO'].includes(tipoCuenta)) multiplicador = -1;
     else if (tipoCuenta === 'CAPITAL') {
         const esAporte = nombreTipo.includes('aporte') || descripcionDetalle.includes('aporte');
         if (esAporte) multiplicador = 1;
     }
 
-    // Aplicamos el signo al monto
     const montoFinal = montoOperacion * multiplicador;
 
-    // Sumamos o restamos al saldo correspondiente
     if (esCaja) caja += montoFinal;
     if (esBanco) banco += montoFinal;
 
-
-    // --- 6. EL "PLUS": LOGICA DE TRASLADOS (DEPÓSITOS Y RETIROS) ---
+    // 6. Traslados (Depósitos/Retiros)
     const textoCompleto = `${nombreTipo} ${descripcionDetalle}`;
-
-    // CASO A: DEPÓSITO (Sale de Caja -> Entra a Banco)
-    // Si salió de caja (multiplicador -1) pero dice Depósito -> Sumar al Banco
-    const esDeposito = textoCompleto.includes('deposito') || 
-                       textoCompleto.includes('depósito') || 
-                       textoCompleto.includes('efectivo en banco');
-
+    
+    // Depósito: Sale Caja -> Entra Banco
+    const esDeposito = textoCompleto.includes('deposito') || textoCompleto.includes('depósito') || textoCompleto.includes('efectivo en banco');
     if (esCaja && multiplicador === -1 && esDeposito) {
         banco += montoOperacion; 
     }
 
-    // CASO B: RETIRO (Sale de Banco -> Entra a Caja)
-    // Si salió de banco (multiplicador -1) pero dice Retiro -> Sumar a Caja
-    const esRetiro = textoCompleto.includes('retiro') || 
-                     textoCompleto.includes('reposicion caja') ||
-                     textoCompleto.includes('efectivo en caja');
-
+    // Retiro: Sale Banco -> Entra Caja
+    const esRetiro = textoCompleto.includes('retiro') || textoCompleto.includes('reposicion caja') || textoCompleto.includes('efectivo en caja');
     if (esBanco && multiplicador === -1 && esRetiro) {
         caja += montoOperacion; 
     }
@@ -178,11 +155,12 @@ const calcularSaldosPorMetodo = (data) => {
   metrics.value.dineroCaja = caja;
   metrics.value.dineroBanco = banco;
 };
-// --- 5. CARGA DE DATOS (API) ---
+
+// --- 6. CARGA DE DATOS API ---
 
 const cargarDatos = async () => {
   try {
-    const response = await axios.get('/api/transacciones')
+    const response = await axios.get('http://localhost:3000/api/transacciones') 
     
     if (response.data && response.data.success) {
       const dataRaw = response.data.data;
@@ -223,13 +201,18 @@ const cargarDatos = async () => {
           detalles: t.detalles || [],
           tipo_pago: t.tipo_pago 
         }
-      }).slice(0, 10); 
+      }).slice(0, 50); 
 
       await cargarMetricas(dataRaw)
       await cargarCuentasPorCobrarPagar(dataRaw)
       
-      // Ejecutamos la lógica corregida
+      // Calcular saldos Caja/Banco
       calcularSaldosPorMetodo(dataRaw)
+      
+      // Actualizar gráficos en pantalla
+      setTimeout(() => {
+        inicializarGraficos()
+      }, 100)
       
     } else {
       transaccionesRecientes.value = [];
@@ -306,6 +289,8 @@ const crearObjetoCuenta = (detalle, transaccion, tipoEntidad) => {
   return {
     id: detalle.id_detalle,
     entidad: tipoEntidad,
+    cliente: transaccion.vehiculo?.cliente_detalle?.nombre || 'General', 
+    proveedor: 'Proveedor General',
     descripcion: detalle.descripcion_detalle,
     monto: monto,
     fechaVencimiento: vencimiento ? vencimiento.toLocaleDateString() : 'N/A',
@@ -313,11 +298,7 @@ const crearObjetoCuenta = (detalle, transaccion, tipoEntidad) => {
   }
 }
 
-// --- VARIABLES GLOBALES PARA GRÁFICOS ---
-let chartFlujo = null
-let chartCategorias = null
-
-// --- 1. PROCESAMIENTO DE DATOS PARA GRÁFICOS ---
+// --- 7. GRÁFICOS VISUALES (PANTALLA) ---
 
 const obtenerDatosGraficos = () => {
   const data = transaccionesRecientes.value || [] 
@@ -335,11 +316,9 @@ const obtenerDatosGraficos = () => {
   data.forEach(t => {
     if (t.fecha && typeof t.fecha === 'string' && t.fecha.includes('/')) {
         const partes = t.fecha.split('/'); 
-        
         if (partes.length === 3) {
             const anio = parseInt(partes[2]);
             const mesIndex = parseInt(partes[1]) - 1; 
-            
             const key = `${anio}-${mesIndex}`;
 
             if (meses[key]) {
@@ -368,8 +347,6 @@ const obtenerDatosGraficos = () => {
 
   return { labelsLine, dataDebe, dataHaber, labelsDona, dataDona }
 }
-
-// --- 2. INICIALIZAR GRÁFICOS WEB (Chart.js) ---
 
 const inicializarGraficos = () => {
   const ctxFlujo = document.getElementById('chartFlujo')
@@ -437,219 +414,352 @@ const inicializarGraficos = () => {
   })
 }
 
-// --- 3. GENERADORES PARA PDF ---
+// --- 8. LÓGICA DE REPORTE FINANCIERO (PDF) MODIFICADA ---
 
-const verificarEspacio = (doc, yActual, altoNecesario, margenInferior = 20) => {
-  if (yActual + altoNecesario + margenInferior > doc.internal.pageSize.height) {
-    doc.addPage()
-    return 20 
-  }
-  return yActual
-}
+const calcularDatosFinancieros = () => {
+  // 1. ESTADO DE RESULTADOS (Ganancias y Pérdidas)
+  const ingresos = transaccionesRecientes.value
+    .filter(t => t.categoria.includes('Ingreso') || t.tipo === 'ingreso')
+    .reduce((sum, t) => sum + t.monto, 0);
 
-const crearGraficoLineasPDF = async (labels, dataDebe, dataHaber) => {
-  return new Promise(resolve => {
-    const tempCanvas = document.createElement('canvas')
-    tempCanvas.width = 800
-    tempCanvas.height = 400
-    const tempCtx = tempCanvas.getContext('2d')
-    
-    tempCtx.fillStyle = '#ffffff'
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+  const gastos = transaccionesRecientes.value
+    .filter(t => t.categoria.includes('Gasto') || t.categoria.includes('Egreso') || t.tipo === 'egreso')
+    .reduce((sum, t) => sum + t.monto, 0);
 
-    const margin = { top: 60, right: 40, bottom: 60, left: 80 }
-    const width = tempCanvas.width - margin.left - margin.right
-    const height = tempCanvas.height - margin.top - margin.bottom
-    
-    const maxValue = Math.max(...dataDebe, ...dataHaber, 100) 
-    const xScale = width / (Math.max(labels.length - 1, 1))
-    const yScale = height / maxValue
+  const utilidadNeta = ingresos - gastos;
 
-    tempCtx.strokeStyle = '#cccccc'; tempCtx.lineWidth = 1;
-    tempCtx.beginPath(); tempCtx.moveTo(margin.left, margin.top); tempCtx.lineTo(margin.left, margin.top + height); tempCtx.stroke(); 
-    tempCtx.beginPath(); tempCtx.moveTo(margin.left, margin.top + height); tempCtx.lineTo(margin.left + width, margin.top + height); tempCtx.stroke(); 
+  // 2. BALANCE GENERAL
+  const activoCorriente = metrics.value.dineroCaja + metrics.value.dineroBanco + metrics.value.cuentasPorCobrar;
+  const totalActivos = activoCorriente; 
 
-    const drawLine = (data, color) => {
-      tempCtx.strokeStyle = color; tempCtx.lineWidth = 3; tempCtx.beginPath();
-      data.forEach((value, index) => {
-        const x = margin.left + (index * xScale)
-        const y = margin.top + height - (value * yScale)
-        index === 0 ? tempCtx.moveTo(x, y) : tempCtx.lineTo(x, y)
-      })
-      tempCtx.stroke()
+  const pasivoCorriente = metrics.value.cuentasPorPagar;
+  const totalPasivos = pasivoCorriente;
+
+  // Patrimonio ajustado para que cuadre (A = P + Pat)
+  const patrimonioBase = totalActivos - totalPasivos - utilidadNeta; 
+  const totalPatrimonio = patrimonioBase + utilidadNeta;
+
+  return {
+    resultados: { ingresos, gastos, utilidadNeta },
+    balance: { 
+      caja: metrics.value.dineroCaja,
+      banco: metrics.value.dineroBanco,
+      cxc: metrics.value.cuentasPorCobrar,
+      totalActivos,
+      cxp: metrics.value.cuentasPorPagar,
+      totalPasivos,
+      patrimonioBase,
+      totalPatrimonio
+    },
+    flujo: {
+      entradas: metrics.value.debeMes, 
+      salidas: metrics.value.haberMes, 
+      neto: metrics.value.balanceMes
     }
+  };
+};
 
-    drawLine(dataDebe, '#0d6efd') 
-    drawLine(dataHaber, '#dc3545') 
-
-    tempCtx.fillStyle = '#666'; tempCtx.font = '12px Arial'; tempCtx.textAlign = 'center'; tempCtx.textBaseline = 'top';
-    labels.forEach((label, index) => {
-      tempCtx.fillText(label, margin.left + (index * xScale), margin.top + height + 10)
-    })
-
-    tempCtx.textAlign = 'right'; tempCtx.textBaseline = 'middle';
-    for (let i = 0; i <= 5; i++) {
-      const value = Math.round((i * maxValue) / 5)
-      const y = margin.top + height - (i * height / 5)
-      tempCtx.fillText('Bs. ' + value.toLocaleString(), margin.left - 10, y)
-    }
-
-    tempCtx.fillStyle = '#2c3e50'; tempCtx.font = 'bold 16px Arial'; tempCtx.textAlign = 'center';
-    tempCtx.fillText('HISTÓRICO DEBE VS HABER', tempCanvas.width / 2, 30)
-
-    tempCtx.fillStyle = '#0d6efd'; tempCtx.fillRect(tempCanvas.width - 200, 20, 15, 15);
-    tempCtx.fillStyle = '#333'; tempCtx.textAlign = 'left'; tempCtx.fillText('Debe', tempCanvas.width - 180, 32);
-    
-    tempCtx.fillStyle = '#dc3545'; tempCtx.fillRect(tempCanvas.width - 120, 20, 15, 15);
-    tempCtx.fillStyle = '#333'; tempCtx.fillText('Haber', tempCanvas.width - 100, 32);
-
-    resolve(tempCanvas.toDataURL('image/png', 1.0))
-  })
-}
-
-const crearGraficoTortaPDF = async (labels, data) => {
-  return new Promise(resolve => {
-    const tempCanvas = document.createElement('canvas')
-    tempCanvas.width = 600
-    tempCanvas.height = 400
-    const tempCtx = tempCanvas.getContext('2d')
-    tempCtx.fillStyle = '#ffffff'; tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-    const colors = ['#0dcaf0', '#198754', '#ffc107', '#fd7e14', '#6610f2', '#20c997']
-    const total = data.reduce((a, b) => a + b, 0) || 1 
-    
-    const centerX = tempCanvas.width / 2
-    const centerY = tempCanvas.height / 2
-    const radius = 120
-    let startAngle = 0
-
-    data.forEach((value, index) => {
-      const sliceAngle = (2 * Math.PI * value) / total
-      tempCtx.beginPath()
-      tempCtx.moveTo(centerX, centerY)
-      tempCtx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle)
-      tempCtx.closePath()
-      tempCtx.fillStyle = colors[index % colors.length]
-      tempCtx.fill()
-      startAngle += sliceAngle
-    })
-
-    tempCtx.beginPath(); tempCtx.arc(centerX, centerY, radius * 0.5, 0, 2 * Math.PI); 
-    tempCtx.fillStyle = '#ffffff'; tempCtx.fill();
-
-    let legendY = 60; const legendX = 20;
-    labels.forEach((label, index) => {
-      const pct = Math.round((data[index] / total) * 100)
-      tempCtx.fillStyle = colors[index % colors.length]
-      tempCtx.fillRect(legendX, legendY, 15, 15)
-      tempCtx.fillStyle = '#333'; tempCtx.font = '12px Arial'; tempCtx.textAlign = 'left';
-      tempCtx.fillText(`${label} (${pct}%)`, legendX + 25, legendY + 12)
-      legendY += 25
-    })
-
-    tempCtx.fillStyle = '#2c3e50'; tempCtx.font = 'bold 16px Arial'; tempCtx.textAlign = 'center';
-    tempCtx.fillText('DISTRIBUCIÓN POR CATEGORÍA', centerX, 30)
-
-    resolve(tempCanvas.toDataURL('image/png', 1.0))
-  })
-}
-
-// --- 4. EXPORTAR PDF ---
-
-const generarPDF = async () => {
+const generarPDF = () => {
   try {
-    const doc = new jsPDF()
-    let yPosition = 20
-    const { labelsLine, dataDebe, dataHaber, labelsDona, dataDona } = obtenerDatosGraficos()
+    const doc = new jsPDF();
+    const datos = calcularDatosFinancieros();
+    const ahora = new Date();
+    let y = 20;
 
-    doc.setFontSize(18)
-    doc.setTextColor(44, 62, 80)
-    doc.text('REPORTE FINANCIERO', 105, yPosition, { align: 'center' })
-    yPosition += 10
+    // --- ENCABEZADO CON LOGO Y SIN FONDO AZUL ---
+
+    // 1. Agregar el Logo (ruta absoluta desde public)
+    // Ajusta las coordenadas (15, 10) y tamaño (30, 30) según tu logo exacto.
+    doc.addImage('/logo.png', 'PNG', 15, 10, 30, 30);
+
+    // 2. Texto del Encabezado (Color oscuro sobre fondo blanco)
+    doc.setFontSize(22);
+    // Color gris oscuro/azulado profesional
+    doc.setTextColor(44, 62, 80); 
+    // Texto movido a la derecha (x=125) para no pisar el logo
+    doc.text('ESTADOS FINANCIEROS', 125, 25, { align: 'center' });
     
-    const ahora = new Date()
+    doc.setFontSize(10);
+    doc.setTextColor(100); // Gris más claro para la fecha
+    doc.text(`Fecha de corte: ${ahora.toLocaleDateString('es-VE')}`, 125, 35, { align: 'center' });
     
-    doc.setFontSize(10)
-    doc.setTextColor(100)
-    doc.text(`Generado el: ${ahora.toLocaleDateString('es-ES')} a las ${ahora.toLocaleTimeString('es-ES')}`, 105, yPosition, { align: 'center' })
-    yPosition += 20
+    // Ajustamos la altura inicial del contenido
+    y = 55;
+
+    // --- CONTENIDO DEL REPORTE ---
+
+    // 1. Estado de Resultados
+    doc.setTextColor(44, 62, 80); // Volvemos al color oscuro principal
+    doc.setFontSize(14);
+    doc.text('1. Estado de Resultados (Ganancias y Pérdidas)', 14, y);
+    y += 5;
+
+    // Etiqueta Dinámica: Utilidad vs Pérdida
+    const etiquetaResultado = datos.resultados.utilidadNeta >= 0 
+        ? 'UTILIDAD NETA (GANANCIA)' 
+        : 'PÉRDIDA NETA';
 
     autoTable(doc, {
-      startY: yPosition,
-      head: [['Concepto', 'Total Mes', 'Balance']],
+      startY: y,
+      head: [['Concepto', 'Monto (Bs.)']],
       body: [
-        ['Total Debe (Entradas/Activos)', `$${metrics.value.debeMes.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`, ''],
-        ['Total Haber (Salidas/Pasivos)', `$${metrics.value.haberMes.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`, ''],
-        ['Cuadre Contable', '', `$${metrics.value.balanceMes.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`]
+        ['(+) Ingresos Operativos', datos.resultados.ingresos.toLocaleString('es-VE', { minimumFractionDigits: 2 })],
+        ['(-) Gastos Operativos', datos.resultados.gastos.toLocaleString('es-VE', { minimumFractionDigits: 2 })],
+        
+        // Fila dinámica de Utilidad/Pérdida
+        [
+            { 
+                content: etiquetaResultado, 
+                styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } 
+            }, 
+            { 
+                content: datos.resultados.utilidadNeta.toLocaleString('es-VE', { minimumFractionDigits: 2 }), 
+                styles: { 
+                    fontStyle: 'bold', 
+                    // Color Rojo si es negativo, Negro si es positivo
+                    textColor: datos.resultados.utilidadNeta < 0 ? [200, 0, 0] : [0, 0, 0] 
+                } 
+            }
+        ]
       ],
       theme: 'grid',
-      headStyles: { fillColor: [44, 62, 80] },
-      styles: { halign: 'right' },
-      columnStyles: { 0: { halign: 'left' } }
-    })
-    yPosition = doc.lastAutoTable.finalY + 15
+      // Encabezados de tabla en azul profesional
+      headStyles: { fillColor: [41, 128, 185] }, 
+      columnStyles: { 1: { halign: 'right' } }
+    });
 
-    if (labelsLine.length > 0) {
-        yPosition = verificarEspacio(doc, yPosition, 100)
-        const imgLine = await crearGraficoLineasPDF(labelsLine, dataDebe, dataHaber)
-        doc.addImage(imgLine, 'PNG', 15, yPosition, 180, 90)
-        yPosition += 100
-    }
+    y = doc.lastAutoTable.finalY + 15;
 
-    if (labelsDona.length > 0) {
-        yPosition = verificarEspacio(doc, yPosition, 100)
-        const imgDona = await crearGraficoTortaPDF(labelsDona, dataDona)
-        doc.addImage(imgDona, 'PNG', 15, yPosition, 180, 90)
-        yPosition += 100
-    }
+    // 2. Balance General
+    doc.text('2. Balance General (Situación Financiera)', 14, y);
+    y += 5;
 
-    yPosition = verificarEspacio(doc, yPosition, 40)
-    doc.setFontSize(14)
-    doc.setTextColor(0)
-    doc.text('Detalle de Transacciones', 14, yPosition)
-    yPosition += 10
-    
     autoTable(doc, {
-      startY: yPosition,
-      head: [['Fecha', 'Código', 'Descripción', 'Categoría', 'Monto', 'Ref']],
-      body: transaccionesRecientes.value.map(t => [
-        t.fecha, 
-        t.codigo_contable, 
-        t.descripcion, 
-        t.categoria, 
-        `Bs. ${t.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`,
-        t.referencia
-      ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [13, 110, 253] },
-      columnStyles: {
-        4: { halign: 'right' }
-      }
-    })
+      startY: y,
+      head: [['Activos', 'Pasivos y Patrimonio']],
+      body: [
+        [
+          `Caja (Efectivo): ${datos.balance.caja.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, 
+          `Cuentas por Pagar: ${datos.balance.cxp.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
+        ],
+        [
+          `Bancos: ${datos.balance.banco.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, 
+          `Total Pasivos: ${datos.balance.totalPasivos.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
+        ],
+        [
+          `Cuentas por Cobrar: ${datos.balance.cxc.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, 
+          ''
+        ],
+        [
+          { content: `TOTAL ACTIVOS: ${datos.balance.totalActivos.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, styles: { fontStyle: 'bold' } },
+          { content: `Capital/Patrimonio: ${datos.balance.patrimonioBase.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, styles: { textColor: 100 } }
+        ],
+        [
+          '', 
+          // Usamos la etiqueta dinámica también aquí
+          { content: `+ ${etiquetaResultado}: ${datos.resultados.utilidadNeta.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, styles: { textColor: 100 } }
+        ],
+        [
+          '', 
+          { content: `TOTAL PASIVO + PATRIMONIO: ${(datos.balance.totalPasivos + datos.balance.totalPatrimonio).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }
+        ]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [39, 174, 96] }, // Verde para Balance
+    });
 
-    const fechaStr = ahora.toISOString().split('T')[0] 
-    const horaStr = ahora.toTimeString().split(' ')[0].replace(/:/g, '-') 
-    
-    const nombreArchivo = `reporte_contable_${fechaStr}_${horaStr}.pdf`
-    
-    doc.save(nombreArchivo)
+    y = doc.lastAutoTable.finalY + 15;
+
+    // Verificar espacio para la siguiente tabla
+    if (y + 40 > doc.internal.pageSize.height) {
+      doc.addPage();
+      y = 20;
+    }
+
+    // 3. Flujo de Caja
+    doc.text('3. Resumen de Flujo de Caja (Movimientos del Mes)', 14, y);
+    y += 5;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Flujo', 'Monto (Bs.)']],
+      body: [
+        ['Total Entradas (Debe)', datos.flujo.entradas.toLocaleString('es-VE', { minimumFractionDigits: 2 })],
+        ['Total Salidas (Haber)', datos.flujo.salidas.toLocaleString('es-VE', { minimumFractionDigits: 2 })],
+        [{ content: 'FLUJO NETO DEL PERIODO', styles: { fontStyle: 'bold' } }, 
+         { content: datos.flujo.neto.toLocaleString('es-VE', { minimumFractionDigits: 2 }), styles: { fontStyle: 'bold', textColor: datos.flujo.neto >= 0 ? [0, 100, 0] : [200, 0, 0] } }]
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [211, 84, 0] }, // Naranja para Flujo
+      columnStyles: { 1: { halign: 'right' } }
+    });
+
+    // Pie de página
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text('Generado por MecanoSoft - Sistema de Gestión Contable', 105, 290, { align: 'center' });
+    }
+
+    doc.save(`Estados_Financieros_${ahora.toISOString().split('T')[0]}.pdf`);
 
   } catch (error) {
-    console.error('Error generando PDF:', error)
-    alert('Hubo un error al crear el PDF. Revisa la consola.')
+    console.error('Error generando Reporte Financiero:', error);
+    alert('Error al generar el reporte. Verifique que el archivo /logo.png exista en la carpeta public.');
   }
-}
+};
 
 const generarExcel = () => {
-  // Lógica de exportación Excel pendiente o simple
-  alert("Funcionalidad Excel pendiente de implementación completa");
+  alert("Esta función requiere librerías adicionales (SheetJS).");
 }
+
+// --- NUEVO REPORTE: SALUD FINANCIERA (EJECUTIVO) ---
+
+const generarReporteSalud = () => {
+  try {
+    const doc = new jsPDF();
+    const ahora = new Date();
+    const datos = calcularDatosFinancieros(); // Reutilizamos tu cálculo contable
+    
+    // --- CÁLCULOS DE INDICADORES (KPIs) ---
+    
+    // 1. Activo Corriente (Lo que tengo ya)
+    const activoCorriente = datos.balance.caja + datos.balance.banco + datos.balance.cxc;
+    // 2. Pasivo Corriente (Lo que debo pagar ya)
+    const pasivoCorriente = datos.balance.cxp;
+    
+    // 3. Capital de Trabajo (Colchón financiero)
+    const capitalTrabajo = activoCorriente - pasivoCorriente;
+    
+    // 4. Razón de Liquidez (Capacidad de pago)
+    // Si es > 1: Puedes pagar. Si es < 1: Estás en problemas.
+    const liquidez = pasivoCorriente > 0 ? (activoCorriente / pasivoCorriente) : (activoCorriente > 0 ? 100 : 0);
+    
+    // 5. Margen de Ganancia (%)
+    const margenNeto = datos.resultados.ingresos > 0 
+      ? ((datos.resultados.utilidadNeta / datos.resultados.ingresos) * 100) 
+      : 0;
+
+    // --- DISEÑO DEL PDF ---
+
+    // Encabezado con Logo
+    doc.addImage('/logo.png', 'PNG', 15, 10, 25, 25);
+    
+    doc.setFontSize(20);
+    doc.setTextColor(44, 62, 80);
+    doc.text('INFORME DE SALUD FINANCIERA', 115, 25, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(127, 140, 141);
+    doc.text('Análisis Ejecutivo y Ratios Económicos', 115, 32, { align: 'center' });
+    
+    let y = 50;
+
+    // --- SECCIÓN 1: RESUMEN EJECUTIVO (INTERPRETACIÓN AUTOMÁTICA) ---
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('1. Diagnóstico General', 14, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    doc.setTextColor(80);
+    
+    let mensajeSalud = "";
+    if (liquidez >= 1.5) {
+        mensajeSalud = "La empresa se encuentra en una posición financiera SÓLIDA. Tiene suficiente efectivo y activos líquidos para cubrir sus deudas cómodamente y cuenta con excedente para reinvertir.";
+    } else if (liquidez >= 1) {
+        mensajeSalud = "La empresa tiene una posición financiera ESTABLE. Puede cubrir sus obligaciones actuales, pero se recomienda vigilar el flujo de caja para evitar imprevistos.";
+    } else {
+        mensajeSalud = "La empresa presenta RIESGO DE LIQUIDEZ. Actualmente las deudas a corto plazo superan el dinero disponible. Se recomienda priorizar cobros y reducir gastos urgentes.";
+    }
+
+    // Dividir texto largo para que quepa en el PDF
+    const splitText = doc.splitTextToSize(mensajeSalud, 180);
+    doc.text(splitText, 14, y);
+    y += 20;
+
+    // --- SECCIÓN 2: INDICADORES DE LIQUIDEZ ---
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('2. Análisis de Solvencia y Liquidez', 14, y);
+    y += 5;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Indicador', 'Valor', 'Estado', 'Interpretación']],
+      body: [
+        [
+            'Capital de Trabajo', 
+            `Bs. ${capitalTrabajo.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, 
+            capitalTrabajo > 0 ? 'POSITIVO' : 'CRÍTICO',
+            'Dinero disponible para operar sin pedir prestado.'
+        ],
+        [
+            'Ratio de Liquidez', 
+            liquidez.toFixed(2), 
+            liquidez >= 1 ? 'OPTIMO' : 'DEFICIENTE',
+            `Por cada 1 Bs de deuda, tienes ${liquidez.toFixed(2)} Bs para pagar.`
+        ]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [52, 152, 219] },
+      columnStyles: { 
+        2: { 
+            fontStyle: 'bold', 
+            textColor: capitalTrabajo > 0 ? [39, 174, 96] : [192, 57, 43] 
+        } 
+      }
+    });
+    
+    y = doc.lastAutoTable.finalY + 15;
+
+    // --- SECCIÓN 3: RENTABILIDAD ---
+    doc.text('3. Análisis de Rentabilidad del Periodo', 14, y);
+    y += 5;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Concepto', 'Monto / Porcentaje']],
+      body: [
+        ['Ventas / Ingresos Totales', `Bs. ${datos.resultados.ingresos.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`],
+        ['Utilidad Neta (Ganancia)', `Bs. ${datos.resultados.utilidadNeta.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`],
+        [
+            { content: 'MARGEN DE GANANCIA', styles: { fontStyle: 'bold' } }, 
+            { 
+                content: `${margenNeto.toFixed(2)} %`, 
+                styles: { 
+                    fontStyle: 'bold', 
+                    textColor: margenNeto > 0 ? [39, 174, 96] : [192, 57, 43],
+                    halign: 'right'
+                } 
+            }
+        ]
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [46, 204, 113] },
+      columnStyles: { 1: { halign: 'right' } }
+    });
+
+    y = doc.lastAutoTable.finalY + 15;
+
+    // Nota final
+    doc.setFontSize(10);
+    doc.setTextColor(150);
+    doc.text('Nota: Este reporte analiza la capacidad de la empresa para generar efectivo y cumplir compromisos.', 14, y);
+
+    // Guardar
+    doc.save(`Reporte_Salud_Financiera_${ahora.toISOString().split('T')[0]}.pdf`);
+
+  } catch (error) {
+    console.error(error);
+    alert('Error generando reporte de salud financiera.');
+  }
+};
 
 onMounted(async () => {
   await cargarDatos()
-  setTimeout(() => {
-    inicializarGraficos()
-  }, 100)
 })
 </script>
 
@@ -664,8 +774,8 @@ onMounted(async () => {
       </div>
       <div class="header-right">
         <div class="user-profile">
-          <i class="fas fa-user-shield me-2"></i>
-          <span>Contador</span>
+          <i class="fas fa-chart-bar me-2"></i>
+          <span>Finanzas</span>
         </div>
       </div>
     </header>
@@ -708,7 +818,7 @@ onMounted(async () => {
       </div>
     </div>
 
-  <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4">
       
       <div class="col-md-3">
         <div class="metric-card">
@@ -880,104 +990,101 @@ onMounted(async () => {
     </div>
 
     <div class="card mb-4">
-  <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-    <h5 class="card-title mb-0">
-      <i class="fas fa-list me-2"></i>Transacciones Recientes
-    </h5>
-    <button @click="cargarDatos" class="btn btn-light btn-sm">
-      <i class="fas fa-sync-alt me-1"></i> Actualizar
-    </button>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>ID</th>
-            <th>Fecha</th>
-            <th>Descripción</th>
-            <th>Clasificación</th> <th>Monto</th>
-            <th>Cód. Transacción</th> <th>Estado</th>
-          </tr>
-        </thead>
-     <tbody>
-  <tr v-if="transaccionesParaTabla && transaccionesParaTabla.length === 0">
-    <td colspan="7" class="text-center py-4">
-      <div class="text-muted">
-        <i class="fas fa-inbox fa-2x mb-2"></i>
-        <p>No hay transacciones registradas</p>
+      <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-list me-2"></i>Transacciones Recientes
+        </h5>
+        <button @click="cargarDatos" class="btn btn-light btn-sm">
+          <i class="fas fa-sync-alt me-1"></i> Actualizar
+        </button>
       </div>
-    </td>
-  </tr>
-  
-  <tr v-for="trx in transaccionesParaTabla" :key="trx.id">
-    <td class="align-middle">
-      <span class="text-muted small fw-bold">#{{ trx.id }}</span>
-    </td>
-    
-    <td class="align-middle text-nowrap">
-      <i class="far fa-calendar-alt text-muted me-1"></i>
-      {{ trx.fecha }}
-    </td>
-    
-    <td class="align-middle">
-      <span class="fw-medium text-dark">{{ trx.descripcion }}</span>
-    </td>
-    
-    <td class="align-middle">
-      <span class="badge rounded-pill shadow-sm px-3 py-2" 
-            :class="getBadgeCategoria(trx.categoria)">
-        <i class="fas fa-arrow-up me-1" v-if="trx.categoria.includes('Ingreso')"></i>
-        <i class="fas fa-arrow-down me-1" v-if="trx.categoria.includes('Gasto')"></i>
-        <i class="fas fa-university me-1" v-if="trx.categoria.includes('Capital')"></i>
-        <i class="fas fa-wallet me-1" v-if="trx.categoria.includes('Activo')"></i>
-        {{ trx.categoria }}
-      </span>
-    </td>
-    
-    <td class="align-middle">
-      <strong :class="{
-        'text-success': trx.tipo === 'ingreso', 
-        'text-danger': trx.tipo === 'egreso',
-        'text-dark': trx.tipo === 'balance'
-      }" class="fs-6">
-        Bs. {{ trx.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
-      </strong>
-    </td>
-    
-    <td class="align-middle">
-      <small class="text-muted bg-light px-2 py-1 rounded border">
-        {{ trx.codigo_contable }}
-      </small>
-    </td>
-    
-    <td class="align-middle">
-      <span class="badge" 
-            :class="getBadgeEstado(trx.estado)">
-        <i class="fas fa-check-circle me-1" v-if="trx.estado === 'completado'"></i>
-        {{ trx.estado.charAt(0).toUpperCase() + trx.estado.slice(1) }}
-      </span>
-    </td>
-  </tr>
-</tbody>
-      </table>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Descripción</th>
+                <th>Clasificación</th> <th>Monto</th>
+                <th>Cód. Transacción</th> <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="transaccionesParaTabla && transaccionesParaTabla.length === 0">
+                <td colspan="7" class="text-center py-4">
+                  <div class="text-muted">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No hay transacciones registradas</p>
+                  </div>
+                </td>
+              </tr>
+              
+              <tr v-for="trx in transaccionesParaTabla" :key="trx.id">
+                <td class="align-middle">
+                  <span class="text-muted small fw-bold">#{{ trx.id }}</span>
+                </td>
+                
+                <td class="align-middle text-nowrap">
+                  <i class="far fa-calendar-alt text-muted me-1"></i>
+                  {{ trx.fecha }}
+                </td>
+                
+                <td class="align-middle">
+                  <span class="fw-medium text-dark">{{ trx.descripcion }}</span>
+                </td>
+                
+                <td class="align-middle">
+                  <span class="badge rounded-pill shadow-sm px-3 py-2" 
+                        :class="getBadgeCategoria(trx.categoria)">
+                    <i class="fas fa-arrow-up me-1" v-if="trx.categoria.includes('Ingreso')"></i>
+                    <i class="fas fa-arrow-down me-1" v-if="trx.categoria.includes('Gasto')"></i>
+                    <i class="fas fa-university me-1" v-if="trx.categoria.includes('Capital')"></i>
+                    <i class="fas fa-wallet me-1" v-if="trx.categoria.includes('Activo')"></i>
+                    {{ trx.categoria }}
+                  </span>
+                </td>
+                
+                <td class="align-middle">
+                  <strong :class="{
+                    'text-success': trx.tipo === 'ingreso', 
+                    'text-danger': trx.tipo === 'egreso',
+                    'text-dark': trx.tipo === 'balance'
+                  }" class="fs-6">
+                    Bs. {{ trx.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+                  </strong>
+                </td>
+                
+                <td class="align-middle">
+                  <small class="text-muted bg-light px-2 py-1 rounded border">
+                    {{ trx.codigo_contable }}
+                  </small>
+                </td>
+                
+                <td class="align-middle">
+                  <span class="badge" 
+                        :class="getBadgeEstado(trx.estado)">
+                    <i class="fas fa-check-circle me-1" v-if="trx.estado === 'completado'"></i>
+                    {{ trx.estado.charAt(0).toUpperCase() + trx.estado.slice(1) }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
     <div class="d-flex justify-content-end gap-2 mt-4">
       <button @click="generarPDF" class="btn btn-danger">
-        <i class="fas fa-file-pdf me-2"></i> Exportar PDF con Gráficos
+        <i class="fas fa-file-pdf me-2"></i> Exportar Reporte Financiero (PDF)
       </button>
-      <button @click="generarExcel" class="btn btn-success">
-        <i class="fas fa-file-excel me-2"></i> Exportar Excel
-      </button>
-    </div>
+      <button @click="generarReporteSalud" class="btn btn-info text-white">
+        <i class="fas fa-heartbeat me-2"></i> Situación Económica
+    </button>
+</div>
+   
 
-    <div style="position: absolute; left: -9999px; top: -9999px; width: 800px; height: 400px;">
-      <canvas id="chartFlujoPDF" width="800" height="400"></canvas>
-      <canvas id="chartCategoriasPDF" width="800" height="400"></canvas>
-    </div>
   </div>
 </template>
 
