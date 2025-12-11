@@ -138,7 +138,7 @@ const handleLogout = () => {
         </router-link>
 
 
-      <router-link to="/fallas" class="nav-link" :class="{ active: $route.path === '/fallas' }" @click="closeSidebar">
+        <router-link to="/fallas" class="nav-link" :class="{ active: $route.path === '/fallas' }" @click="closeSidebar">
           <span class="nav-icon">🔧</span>
           <span class="nav-text">Registro de Fallas</span>
         </router-link>

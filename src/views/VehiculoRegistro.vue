@@ -164,7 +164,7 @@ const guardarVehiculo = async () => {
     const data = await res.json();
     
     if (data.success) {
-      alert(vehiculoEditando.value ? 'Vehículo actualizado' : 'Vehículo registrado');
+      alert(vehiculoEditando.value ? '✅  Vehículo actualizado' : '✅ Vehículo registrado Exitosamente');
       mostrarModal.value = false;
       cargarVehiculos();
     } else {
