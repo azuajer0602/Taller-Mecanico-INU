@@ -6,6 +6,38 @@ import { useAuthStore } from '../stores/auth'; // Usamos el store para el nombre
 const API_BASE = 'http://localhost:3000/api';
 const authStore = useAuthStore();
 
+const usuarioIniciales = computed(() => {
+  if (!authStore.user) return 'A';
+  
+  const nombreCompleto = authStore.user.nombre_emp || authStore.user.nombre || '';
+  
+  if (!nombreCompleto) {
+    return (authStore.user.usuario || 'A').charAt(0).toUpperCase();
+  }
+  
+  const partes = nombreCompleto.split(' ');
+  if (partes.length >= 2) {
+    return `${partes[0].charAt(0)}${partes[1].charAt(0)}`.toUpperCase();
+  } else {
+    return partes[0].charAt(0).toUpperCase();
+  }
+});
+
+const nombreCompleto = computed(() => {
+  if (!authStore.user) return 'Administrador';
+  
+  return authStore.user.nombre_emp || 
+         authStore.user.nombre || 
+         authStore.user.usuario || 
+         'Administrador';
+});
+
+// Computed para el cargo
+const usuarioCargo = computed(() => {
+  if (!authStore.user || !authStore.user.cargo) return 'MecanoSoft';
+  return authStore.user.cargo;
+});
+
 // --- ESTADO ---
 const metrics = ref({
   vehiculosReparados: 0,
@@ -107,10 +139,10 @@ onMounted(() => {
       </div>
       <div class="header-right">
         <div class="user-profile">
-          <div class="avatar-circle">{{ authStore.user?.nombre?.charAt(0) || 'U' }}</div>
+          <div class="avatar-circle">{{ usuarioIniciales }}</div>
           <div class="d-flex flex-column">
-           <span class="fw-bold">{{ authStore.nombreCompleto }}</span>
-<small class="text-muted">{{ authStore.miCargo }}</small>
+           <span class="fw-bold">{{ nombreCompleto }}</span>
+<small class="text-muted">{{ usuarioCargo }}</small>
           </div>
         </div>
       </div>

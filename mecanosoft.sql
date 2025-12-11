@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 11-12-2025 a las 03:45:17
+-- Tiempo de generación: 11-12-2025 a las 07:38:41
 -- Versión del servidor: 10.4.32-MariaDB
--- Versión de PHP: 8.0.30
+-- Versión de PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -157,7 +157,10 @@ INSERT INTO `cliente` (`cedula`, `nombre`, `apellido`, `id_cliente`, `correo`, `
 ('147522565', 'Maria', 'Romera', 11, 'mariamilagro@gmail.coms', 'La Miel', '042452844864', 0),
 ('14733565', 'Maria', 'Romera', 12, 'mariamilagro@gmail.coms', 'La Miel', '042452844864', 1),
 ('15866565', 'Maria', 'Romera', 13, 'mariamilagro@gmail.coms', 'La Miel', '042452844864', 0),
-('21586987', 'Jose', 'Perez', 16, 'josesitoperez@gmail.com', 'La Mielci', '04160196347', 1);
+('21586987', 'Jose', 'Perez', 16, 'josesitoperez@gmail.com', 'La Mielci', '04160196347', 1),
+('30942261', 'Yelians', 'Rodriguez', 17, 'yeliansrodriguez@gmail.com', 'km 13 via buena vista sector sol y sombra', '04120971137', 1),
+('30694319', 'Jose', 'Santeliz', 18, 'josesanteliz@gmail.com', 'cabudare Urb las lomas casa 12', '04123189829', 1),
+('14877242', 'Yennys', 'Vargas', 19, 'yennysvargas@gmail.com', 'villa productiva la verde casa 25', '04120406974', 1);
 
 -- --------------------------------------------------------
 
@@ -287,7 +290,14 @@ INSERT INTO `detalle_transaccion` (`id_detalle`, `id_transaccion`, `debe`, `habe
 (128, 69, 25000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
 (129, 69, 0.00, 25000.00, 'Compra de Rin 24 (Bolívares)', 0, 0, NULL, 'Bolívares', 25),
 (130, 70, 25000.00, 0.00, 'Compras', 0, 0, NULL, 'Bolívares', 25),
-(131, 70, 0.00, 25000.00, 'Compra de Rin 24 (Bolívares)', 0, 0, NULL, 'Bolívares', 25);
+(131, 70, 0.00, 25000.00, 'Compra de Rin 24 (Bolívares)', 0, 0, NULL, 'Bolívares', 25),
+(132, 72, 7850.00, 0.00, 'Ingreso Caja (Divisas)', 0, 0, NULL, 'Divisas', 2),
+(133, 72, 0.00, 7700.00, 'Ingreso por Venta de Repuestos', 0, 0, NULL, 'N/A', 22),
+(134, 72, 0.00, 150.00, 'Ingreso por Servicios Mecánicos', 0, 0, NULL, 'N/A', 23),
+(135, 73, 1000.00, 0.00, 'Ingreso Caja (Bolivares en efectivo)', 0, 0, NULL, 'Bolivares en efectivo', 2),
+(136, 73, 0.00, 1000.00, 'Ingreso por Venta de Repuestos', 0, 0, NULL, 'N/A', 22),
+(137, 74, 2080.00, 0.00, 'Ingreso Caja (Bolivares en efectivo)', 0, 0, NULL, 'Bolivares en efectivo', 2),
+(138, 74, 0.00, 2080.00, 'Ingreso por Venta de Repuestos', 0, 0, NULL, 'N/A', 22);
 
 -- --------------------------------------------------------
 
@@ -327,7 +337,9 @@ CREATE TABLE `empleado` (
 
 INSERT INTO `empleado` (`id_empleado`, `usuario`, `contrasena`, `nombre_emp`, `apellido_emp`, `cedula_emp`, `cargo`, `fecha_contratacion`, `sueldo_base`) VALUES
 (31, 'rei', '1234', 'reimil', 'azuaje', '31663399', 'Administrador', '2025-11-20 00:00:00', 5000),
-(32, 'yejo', '1234', 'Yelians', 'Rodriguez', '30942261', 'Mecanico', '2025-12-09 00:00:00', 40);
+(32, 'yejo', '1234', 'Yelians', 'Rodriguez', '30942261', 'Mecanico', '2025-12-09 00:00:00', 40),
+(33, 'jose', '30942261', 'Antonio', 'Rodriguez', '7424430', 'Mecanico', '2025-12-11 00:00:00', 1500),
+(34, 'juan', '14877242', 'Juan', 'Valdez', '29737640', 'Mecanico', '2025-12-11 00:00:00', 2000);
 
 -- --------------------------------------------------------
 
@@ -401,6 +413,15 @@ CREATE TABLE `facturas` (
   `updatedAt` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `facturas`
+--
+
+INSERT INTO `facturas` (`id`, `ClienteId`, `fechaPago`, `total`, `estado`, `metodoPago`, `createdAt`, `updatedAt`) VALUES
+(3, 3, '2025-12-11 00:00:00', 7850.00, 'Pagado', 'Divisas', '2025-12-11 05:24:24', '2025-12-11 05:24:24'),
+(4, 9, '2025-12-11 00:00:00', 1000.00, 'Pagado', 'Bolivares en efectivo', '2025-12-11 05:27:00', '2025-12-11 05:27:00'),
+(5, 3, '2025-12-11 00:00:00', 2080.00, 'Pagado', 'Bolivares en efectivo', '2025-12-11 05:28:02', '2025-12-11 05:28:02');
+
 -- --------------------------------------------------------
 
 --
@@ -471,6 +492,17 @@ CREATE TABLE `itemfacturas` (
   `FacturaId` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `itemfacturas`
+--
+
+INSERT INTO `itemfacturas` (`id`, `descripcion`, `cantidad`, `precio`, `createdAt`, `updatedAt`, `FacturaId`) VALUES
+(6, 'Servicio Mecánico - Pila de Gasolina (Baja Presión) (AFGRGS6)', 1, 150.00, '2025-12-11 05:24:24', '2025-12-11 05:24:24', 3),
+(7, 'Rin 24', 3, 2500.00, '2025-12-11 05:24:24', '2025-12-11 05:24:24', 3),
+(8, 'amortiguador', 1, 200.00, '2025-12-11 05:24:24', '2025-12-11 05:24:24', 3),
+(9, 'amortiguador', 5, 200.00, '2025-12-11 05:27:00', '2025-12-11 05:27:00', 4),
+(10, 'bujia', 16, 130.00, '2025-12-11 05:28:02', '2025-12-11 05:28:02', 5);
+
 -- --------------------------------------------------------
 
 --
@@ -487,9 +519,11 @@ CREATE TABLE `marca` (
 --
 
 INSERT INTO `marca` (`id_marca`, `nombre_marca`) VALUES
+(4, 'Chevrolet'),
 (2, 'Ford'),
 (3, 'JAC'),
-(1, 'Toyota');
+(1, 'Toyota'),
+(5, 'Volkswagen');
 
 -- --------------------------------------------------------
 
@@ -540,6 +574,7 @@ CREATE TABLE `proveedor` (
 
 INSERT INTO `proveedor` (`id_proveedor`, `nombre_fiscal`, `rif_juridico`, `telefono_proveedor`, `direccion_proveedor`) VALUES
 (1, 'Chevrolete', 14877242, '04120971138', 'barquisimeto'),
+(14, 'Jose\'S Motors', 34004804, '04121756524', 'Via quibor km 13 frente a pescaito'),
 (454, 'Perez solutions', 31584789, '04268596325', 'Este de barquisimeto');
 
 -- --------------------------------------------------------
@@ -561,9 +596,9 @@ CREATE TABLE `repuesto` (
 --
 
 INSERT INTO `repuesto` (`id_repuesto`, `nombre_repuesto`, `precio_unitario`, `stock_inventario`, `desc_repuesto`) VALUES
-(14, 'amortiguador', 200, 44, 'pieza para amotiguacion'),
-(16, 'bujia', 130, 16, 'grado 2'),
-(1558214, 'Rin 24', 2500, 20, 'Rin para medida 24');
+(14, 'amortiguador', 200, 38, 'pieza para amotiguacion'),
+(16, 'bujia', 130, 0, 'grado 2'),
+(1558214, 'Rin 24', 2500, 17, 'Rin para medida 24');
 
 -- --------------------------------------------------------
 
@@ -588,7 +623,7 @@ CREATE TABLE `servicio` (
 --
 
 INSERT INTO `servicio` (`id_servicio`, `matricula_fk`, `id_empleado_fk`, `id_estado`, `id_falla_reportada`, `entrega`, `fecha_entrada`, `fecha_salida`, `mano_obra`) VALUES
-(2, 'AFGRGS6', 32, 3, 1, 'No entregado', '2025-12-10', '2025-12-10', 120);
+(2, 'AFGRGS6', 32, 3, 1, 'Entregado', '2025-12-10', '2025-12-11', 150);
 
 -- --------------------------------------------------------
 
@@ -696,7 +731,10 @@ INSERT INTO `transacciones` (`id_transaccion`, `id_tipo_transaccion_fk`, `fecha_
 (67, 25, '2025-12-09'),
 (68, 25, '2025-12-09'),
 (69, 25, '2025-12-09'),
-(70, 25, '2025-12-10');
+(70, 25, '2025-12-10'),
+(72, 22, '2025-12-11'),
+(73, 22, '2025-12-11'),
+(74, 22, '2025-12-11');
 
 -- --------------------------------------------------------
 
@@ -721,7 +759,10 @@ CREATE TABLE `vehiculo` (
 
 INSERT INTO `vehiculo` (`matricula`, `id_cliente`, `color`, `modelo`, `afio`, `marca`, `diagnosticado`, `activo`) VALUES
 ('AFGRGS6', 3, 'Dorado', 'Fiesta', 2025, 2, 1, 1),
-('FEGTE56', 3, 'Gris', 'Carrier', 2025, 3, 0, 1);
+('AXIOS', 19, 'Azul', 'Yaris', 2022, 1, 0, 1),
+('FEGTE56', 3, 'Gris', 'Carrier', 2025, 3, 0, 1),
+('MU5T4NG', 18, 'Rojo', 'Mustang', 2023, 2, 0, 1),
+('TH3B00S', 17, 'negro', 'Ford Expedition', 2025, 2, 0, 1);
 
 --
 -- Índices para tablas volcadas
@@ -850,7 +891,29 @@ ALTER TABLE `fallas`
   ADD UNIQUE KEY `nombre_falla_9` (`nombre_falla`),
   ADD UNIQUE KEY `nombre_falla_10` (`nombre_falla`),
   ADD UNIQUE KEY `nombre_falla_11` (`nombre_falla`),
-  ADD UNIQUE KEY `nombre_falla_12` (`nombre_falla`);
+  ADD UNIQUE KEY `nombre_falla_12` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_13` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_14` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_15` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_16` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_17` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_18` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_19` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_20` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_21` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_22` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_23` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_24` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_25` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_26` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_27` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_28` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_29` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_30` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_31` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_32` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_33` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_34` (`nombre_falla`);
 
 --
 -- Indices de la tabla `gasto`
@@ -884,7 +947,29 @@ ALTER TABLE `marca`
   ADD UNIQUE KEY `nombre_marca_11` (`nombre_marca`),
   ADD UNIQUE KEY `nombre_marca_12` (`nombre_marca`),
   ADD UNIQUE KEY `nombre_marca_13` (`nombre_marca`),
-  ADD UNIQUE KEY `nombre_marca_14` (`nombre_marca`);
+  ADD UNIQUE KEY `nombre_marca_14` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_15` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_16` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_17` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_18` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_19` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_20` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_21` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_22` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_23` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_24` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_25` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_26` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_27` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_28` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_29` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_30` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_31` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_32` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_33` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_34` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_35` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_36` (`nombre_marca`);
 
 --
 -- Indices de la tabla `orden_de_trabajo`
@@ -907,46 +992,16 @@ ALTER TABLE `proveedor`
   ADD PRIMARY KEY (`id_proveedor`),
   ADD UNIQUE KEY `nombre_fiscal` (`nombre_fiscal`),
   ADD UNIQUE KEY `rif_juridico` (`rif_juridico`),
-  ADD UNIQUE KEY `nombre_fiscal_2` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_3` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_4` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_5` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_6` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_7` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_8` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_9` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_10` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_11` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_12` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_13` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_14` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_15` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_16` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_17` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_18` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_19` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_20` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_21` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_22` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_23` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_24` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_25` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_26` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_27` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_28` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_29` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_30` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_31` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_32` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_33` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_34` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_35` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_36` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_37` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_38` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_39` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_40` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_41` (`nombre_fiscal`);
+  ADD UNIQUE KEY `nombre_fiscal_41` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_47` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_49` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_57` (`nombre_fiscal`);
 
 --
 -- Indices de la tabla `repuesto`
@@ -981,6 +1036,28 @@ ALTER TABLE `repuesto`
   ADD UNIQUE KEY `nombre_repuesto_26` (`nombre_repuesto`),
   ADD UNIQUE KEY `nombre_repuesto_27` (`nombre_repuesto`),
   ADD UNIQUE KEY `nombre_repuesto_28` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_29` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_30` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_31` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_32` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_33` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_34` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_35` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_36` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_37` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_38` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_39` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_40` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_41` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_42` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_43` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_44` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_45` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_46` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_47` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_48` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_49` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_50` (`nombre_repuesto`),
   ADD KEY `idx_id_repuesto` (`id_repuesto`);
 
 --
@@ -1042,7 +1119,7 @@ ALTER TABLE `atributo_vehiculo`
 -- AUTO_INCREMENT de la tabla `cliente`
 --
 ALTER TABLE `cliente`
-  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT de la tabla `compra_repuesto`
@@ -1054,13 +1131,13 @@ ALTER TABLE `compra_repuesto`
 -- AUTO_INCREMENT de la tabla `detalle_transaccion`
 --
 ALTER TABLE `detalle_transaccion`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=132;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=139;
 
 --
 -- AUTO_INCREMENT de la tabla `empleado`
 --
 ALTER TABLE `empleado`
-  MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT de la tabla `estado`
@@ -1072,7 +1149,7 @@ ALTER TABLE `estado`
 -- AUTO_INCREMENT de la tabla `facturas`
 --
 ALTER TABLE `facturas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `fallas`
@@ -1084,13 +1161,13 @@ ALTER TABLE `fallas`
 -- AUTO_INCREMENT de la tabla `itemfacturas`
 --
 ALTER TABLE `itemfacturas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `marca`
 --
 ALTER TABLE `marca`
-  MODIFY `id_marca` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_marca` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `orden_de_trabajo`
@@ -1126,7 +1203,7 @@ ALTER TABLE `tipo_transaccion`
 -- AUTO_INCREMENT de la tabla `transacciones`
 --
 ALTER TABLE `transacciones`
-  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
+  MODIFY `id_transaccion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
 
 --
 -- Restricciones para tablas volcadas
@@ -1136,16 +1213,16 @@ ALTER TABLE `transacciones`
 -- Filtros para la tabla `atributo_vehiculo`
 --
 ALTER TABLE `atributo_vehiculo`
-  ADD CONSTRAINT `atributo_vehiculo_ibfk_20` FOREIGN KEY (`matricula`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `atributo_vehiculo_ibfk_21` FOREIGN KEY (`id_atributo`) REFERENCES `atributos` (`id_atributo`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `atributo_vehiculo_ibfk_64` FOREIGN KEY (`matricula`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `atributo_vehiculo_ibfk_65` FOREIGN KEY (`id_atributo`) REFERENCES `atributos` (`id_atributo`) ON DELETE NO ACTION ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_atributo_estado` FOREIGN KEY (`id_estado_atributo`) REFERENCES `estados_atributo` (`id_estado_atributo_fk`);
 
 --
 -- Filtros para la tabla `compra_repuesto`
 --
 ALTER TABLE `compra_repuesto`
-  ADD CONSTRAINT `compra_repuesto_ibfk_30` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedor` (`id_proveedor`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `compra_repuesto_ibfk_31` FOREIGN KEY (`id_repuesto`) REFERENCES `repuesto` (`id_repuesto`) ON DELETE NO ACTION ON UPDATE CASCADE;
+  ADD CONSTRAINT `compra_repuesto_ibfk_72` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedor` (`id_proveedor`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `compra_repuesto_ibfk_73` FOREIGN KEY (`id_repuesto`) REFERENCES `repuesto` (`id_repuesto`) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `concepto_cobro`
@@ -1177,8 +1254,8 @@ ALTER TABLE `detalle_transaccion`
 -- Filtros para la tabla `diagnostico`
 --
 ALTER TABLE `diagnostico`
-  ADD CONSTRAINT `diagnostico_ibfk_21` FOREIGN KEY (`id_vehiculo`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `diagnostico_ibfk_22` FOREIGN KEY (`id_falla`) REFERENCES `fallas` (`id_falla`) ON DELETE SET NULL ON UPDATE CASCADE;
+  ADD CONSTRAINT `diagnostico_ibfk_65` FOREIGN KEY (`id_vehiculo`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `diagnostico_ibfk_66` FOREIGN KEY (`id_falla`) REFERENCES `fallas` (`id_falla`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `factura`
@@ -1211,8 +1288,30 @@ ALTER TABLE `itemfacturas`
   ADD CONSTRAINT `itemfacturas_ibfk_14` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_15` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_16` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_17` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_18` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_19` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_2` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_20` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_21` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_22` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_23` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_24` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_25` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_26` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_27` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_28` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_29` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_3` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_30` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_31` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_32` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_33` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_34` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_35` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_36` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_37` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_38` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_4` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_5` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `itemfacturas_ibfk_6` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -1236,10 +1335,10 @@ ALTER TABLE `pago_realizado`
 -- Filtros para la tabla `servicio`
 --
 ALTER TABLE `servicio`
-  ADD CONSTRAINT `servicio_ibfk_27` FOREIGN KEY (`matricula_fk`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `servicio_ibfk_28` FOREIGN KEY (`id_empleado_fk`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `servicio_ibfk_29` FOREIGN KEY (`id_falla_reportada`) REFERENCES `fallas` (`id_falla`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `servicio_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estado` (`id_estado`);
+  ADD CONSTRAINT `servicio_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estado` (`id_estado`),
+  ADD CONSTRAINT `servicio_ibfk_93` FOREIGN KEY (`matricula_fk`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `servicio_ibfk_94` FOREIGN KEY (`id_empleado_fk`) REFERENCES `empleado` (`id_empleado`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `servicio_ibfk_95` FOREIGN KEY (`id_falla_reportada`) REFERENCES `fallas` (`id_falla`) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `tarifa_empleado`
@@ -1257,8 +1356,8 @@ ALTER TABLE `transacciones`
 -- Filtros para la tabla `vehiculo`
 --
 ALTER TABLE `vehiculo`
-  ADD CONSTRAINT `vehiculo_ibfk_29` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `vehiculo_ibfk_30` FOREIGN KEY (`marca`) REFERENCES `marca` (`id_marca`) ON DELETE NO ACTION ON UPDATE CASCADE;
+  ADD CONSTRAINT `vehiculo_ibfk_73` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `vehiculo_ibfk_74` FOREIGN KEY (`marca`) REFERENCES `marca` (`id_marca`) ON DELETE NO ACTION ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

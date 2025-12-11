@@ -180,65 +180,186 @@ export const facturaController = {
   // 2. GENERAR PDF
   async generatePdf(req, res) {
     try {
-      const { id } = req.params;
-      const factura = await Factura.findByPk(id, {
-        include: [{ model: Cliente, as: 'Cliente' }, { model: ItemFactura, as: 'ItemFacturas' }]
-      });
+        const { id } = req.params;
+        const factura = await Factura.findByPk(id, {
+            include: [{ model: Cliente, as: 'Cliente' }, { model: ItemFactura, as: 'ItemFacturas' }]
+        });
 
-      if (!factura) return res.status(404).json({ success: false, message: 'No encontrada' });
+        if (!factura) return res.status(404).json({ success: false, message: 'No encontrada' });
 
-      if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
+        // --- Configuración de Directorios y Archivos ---
+        if (!fs.existsSync(invoicesDir)) fs.mkdirSync(invoicesDir, { recursive: true });
 
-      const fileName = `Factura_${factura.id}.pdf`;
-      const filePath = path.join(invoicesDir, fileName);
-      const doc = new PDFDocument({ size: 'A4', margin: 50 });
-      const writeStream = fs.createWriteStream(filePath);
-      
-      doc.pipe(writeStream);
+        const fileName = `Factura_${factura.id}.pdf`;
+        const filePath = path.join(invoicesDir, fileName);
+        
+        // --- Configuración del Documento PDF ---
+        const doc = new PDFDocument({ size: 'A4', margin: 50 });
+        const writeStream = fs.createWriteStream(filePath);
+        doc.pipe(writeStream);
 
-      if (fs.existsSync(logoPath)) doc.image(logoPath, 50, 45, { width: 80 });
-      
-      doc.fontSize(20).text('FACTURA', 400, 50, { align: 'right' });
-      doc.fontSize(10).text(`#${factura.id}`, 400, 75, { align: 'right' });
-      
-      doc.text(`Cliente: ${factura.Cliente.nombre} ${factura.Cliente.apellido}`, 50, 130);
-      doc.text(`CI/RIF: ${factura.Cliente.cedula}`, 50, 145);
-      doc.text(`Fecha: ${new Date(factura.fechaPago).toLocaleDateString()}`, 400, 130, { align: 'right' });
-      
-      let y = 200;
-      doc.rect(50, y, 500, 20).fill('#eee').stroke();
-      doc.fillColor('#000').text('Descripción', 60, y+5);
-      doc.text('Cant', 320, y+5);
-      doc.text('Precio', 380, y+5);
-      doc.text('Total', 460, y+5);
-      
-      y += 25;
-      const moneda = factura.metodoPago === 'Divisas' ? '$' : 'Bs';
+        // --- Constantes de Estilo ---
+        const primaryColor = '#4e73df'; // Azul moderno
+        const secondaryColor = '#f2f2f2'; // Gris claro para fondo de tabla
+        const textColor = '#333333'; // Gris oscuro para el texto
+        const yStart = 200; // Posición Y inicial para la tabla
+        const tableWidth = 500;
+        const xPos = 50;
 
-      factura.ItemFacturas.forEach(item => {
-          const totalItem = parseFloat(item.cantidad) * parseFloat(item.precio);
-          doc.text(item.descripcion, 60, y);
-          doc.text(item.cantidad, 320, y);
-          doc.text(`${moneda} ${item.precio}`, 380, y);
-          doc.text(`${moneda} ${totalItem.toFixed(2)}`, 460, y);
-          y += 20;
-      });
-      
-      doc.fontSize(14).text(`TOTAL: ${moneda} ${factura.total}`, 400, y+20, { align: 'right', bold: true });
-      doc.fontSize(10).text(`Método: ${factura.metodoPago}`, 50, y+20);
-      doc.text(`Estado: ${factura.estado}`, 50, y+35);
+        // --- 1. Encabezado y Logo ---
+        doc.fillColor(textColor);
 
-      doc.end();
+        // Logo (si existe)
+        if (fs.existsSync(logoPath)) {
+            doc.image(logoPath, xPos, 50, { width: 80 });
+        } else {
+            // Si no hay logo, poner un nombre de empresa
+            doc.fontSize(16).text('Nombre de tu Empresa', xPos, 60);
+        }
 
-      writeStream.on('finish', () => {
-        res.json({ success: true, url: `/invoices/${fileName}` });
-      });
+        // Título de Factura
+        doc.fillColor(primaryColor)
+           .fontSize(24)
+           .text('FACTURA', 400, 50, { align: 'right' });
+           
+        // Número de Factura
+        doc.fillColor(textColor)
+           .fontSize(12)
+           .text(`Nº: ${factura.id}`, 400, 80, { align: 'right' });
+        
+        doc.moveDown(); // Espacio después del encabezado
+        
+        // --- 2. Información de la Empresa (Simulado, asumiendo que debe ir cerca del logo) ---
+        doc.fontSize(10)
+           .text('Dirección de la Empresa, Ciudad, País', xPos, 110)
+           .text('Teléfono: 0123-456789', xPos, 125)
+           .text('Email: contacto@empresa.com', xPos, 140);
+
+        // Línea separadora
+        doc.strokeColor(primaryColor)
+           .lineWidth(1)
+           .moveTo(xPos, 170)
+           .lineTo(xPos + tableWidth, 170)
+           .stroke();
+
+        // --- 3. Información del Cliente y Fecha ---
+        doc.fillColor(textColor).fontSize(10);
+        
+        // Columna Izquierda (Cliente)
+        doc.text('FACTURAR A:', xPos, yStart - 20)
+           .font('Helvetica-Bold')
+           .text(`${factura.Cliente.nombre} ${factura.Cliente.apellido}`, xPos, yStart);
+        
+        doc.font('Helvetica')
+           .text(`CI/RIF: ${factura.Cliente.cedula}`, xPos, yStart + 15)
+           .text(`Dirección: ${factura.Cliente.direccion || 'No especificada'}`, xPos, yStart + 30); // Añadida dirección (asumiendo que existe)
+
+        // Columna Derecha (Datos de Factura)
+        doc.text('FECHA DE EMISIÓN:', 400, yStart)
+           .font('Helvetica-Bold')
+           .text(new Date(factura.fechaPago).toLocaleDateString(), 400, yStart + 15);
+
+        doc.moveDown(3);
+
+        // --- 4. Tabla de Ítems de Factura ---
+        let y = yStart + 70;
+        const itemHeight = 20;
+        const moneda = factura.metodoPago === 'Divisas' ? '$' : 'Bs';
+
+        // Encabezados de la Tabla
+        doc.fillColor(primaryColor)
+           .rect(xPos, y, tableWidth, itemHeight).fill(primaryColor)
+           .fillColor('#ffffff') // Texto blanco para los encabezados
+           .font('Helvetica-Bold')
+           .text('Descripción', xPos + 10, y + 5)
+           .text('Cant', 300, y + 5)
+           .text('Precio Unit.', 380, y + 5)
+           .text('Total', 460, y + 5, { align: 'right', width: 40 }); // Alineación a la derecha
+
+        y += itemHeight;
+
+        // Ítems
+        doc.font('Helvetica').fillColor(textColor);
+        let itemsTotal = 0; // Para calcular la suma total
+
+        factura.ItemFacturas.forEach((item, index) => {
+            const totalItem = parseFloat(item.cantidad) * parseFloat(item.precio);
+            itemsTotal += totalItem;
+
+            // Fondo alternado para filas (mejora visual)
+            if (index % 2 === 0) {
+                 doc.fillColor(secondaryColor).rect(xPos, y, tableWidth, itemHeight).fill(secondaryColor);
+                 doc.fillColor(textColor);
+            } else {
+                doc.fillColor('#ffffff').rect(xPos, y, tableWidth, itemHeight).fill('#ffffff');
+                doc.fillColor(textColor);
+            }
+            
+            doc.text(item.descripcion, xPos + 10, y + 5, { width: 220 })
+               .text(item.cantidad, 300, y + 5)
+               .text(`${moneda} ${parseFloat(item.precio).toFixed(2)}`, 380, y + 5)
+               .text(`${moneda} ${totalItem.toFixed(2)}`, 460, y + 5, { align: 'right', width: 40 });
+
+            y += itemHeight;
+        });
+
+        // Asegurar el espacio para la siguiente sección
+        doc.moveDown(2);
+        
+        // --- 5. Totales y Resumen ---
+        
+        // Fondo gris para el área de totales
+        const totalAreaY = y + 10;
+        const totalAreaHeight = 60;
+        
+        doc.fillColor(secondaryColor)
+           .rect(300, totalAreaY, 250, totalAreaHeight).fill(secondaryColor);
+
+        // Subtotal (asumiendo que el total de la factura ya considera impuestos si aplica)
+        // Usamos el total calculado para mayor seguridad, o el total de la DB si es más preciso.
+        const totalDisplay = parseFloat(factura.total).toFixed(2);
+        
+        doc.fillColor(textColor)
+           .font('Helvetica')
+           .fontSize(10)
+           .text('Subtotal:', 320, totalAreaY + 10)
+           .text(`${moneda} ${itemsTotal.toFixed(2)}`, 420, totalAreaY + 10, { align: 'right', width: 120 });
+        
+        // TOTAL FINAL - Resaltado
+        doc.fillColor(primaryColor)
+           .font('Helvetica-Bold')
+           .fontSize(16)
+           .text('TOTAL A PAGAR:', 320, totalAreaY + 35)
+           .text(`${moneda} ${totalDisplay}`, 420, totalAreaY + 35, { align: 'right', width: 120 });
+
+        // Información adicional
+        doc.fillColor(textColor)
+           .font('Helvetica')
+           .fontSize(10)
+           .text(`Método de Pago: ${factura.metodoPago}`, xPos, totalAreaY + 10)
+           .text(`Estado: ${factura.estado}`, xPos, totalAreaY + 25);
+        
+        // --- 6. Pie de Página (Notas) ---
+        const footerY = 750;
+        doc.fillColor(textColor)
+           .fontSize(8)
+           .text('GRACIAS POR SU COMPRA.', xPos, footerY);
+           
+        doc.fillColor(primaryColor)
+           .fontSize(8)
+           .text('Términos y Condiciones: Esta factura debe ser pagada en un plazo de 30 días.', xPos, footerY + 15);
+           
+        doc.end();
+
+        writeStream.on('finish', () => {
+            res.json({ success: true, url: `/invoices/${fileName}` });
+        });
 
     } catch (e) {
-      console.error(e);
-      res.status(500).json({ success: false, message: e.message });
+        console.error(e);
+        res.status(500).json({ success: false, message: e.message });
     }
-  },
+},
 
   // 3. OTROS MÉTODOS
   async findAll(req, res) {
