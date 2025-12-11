@@ -119,6 +119,14 @@ const handleLogout = () => {
         </router-link>
         </li>
 
+         
+        <li v-if="!authStore.isMecanico">
+        <router-link to="/marcas" class="nav-link" :class="{ active: $route.path === '/marcas' }" @click="closeSidebar">
+          <span class="nav-icon">🚚</span>
+          <span class="nav-text">Marcas</span>
+        </router-link>
+        </li>
+
         <router-link to="/repuestos" class="nav-link" :class="{ active: $route.path === '/repuestos' }" @click="closeSidebar">
           <span class="nav-icon">📦</span>
           <span class="nav-text">Inventario</span>
@@ -129,6 +137,16 @@ const handleLogout = () => {
           <span class="nav-text">Diagnóstico Técnico</span>
         </router-link>
 
+
+      <router-link to="/fallas" class="nav-link" :class="{ active: $route.path === '/fallas' }" @click="closeSidebar">
+          <span class="nav-icon">🔧</span>
+          <span class="nav-text">Registro de Fallas</span>
+        </router-link>
+
+         <router-link to="/atributos" class="nav-link" :class="{ active: $route.path === '/fallas' }" @click="closeSidebar">
+          <span class="nav-icon">🔧</span>
+          <span class="nav-text">Registro de Partes</span>
+        </router-link>
 
         <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }" @click.prevent="handleLogout(); closeSidebar()">
           <span class="nav-icon">🚪</span>

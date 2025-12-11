@@ -16,6 +16,9 @@ import repuestos  from '../views/repuestos.vue'
 import proveedores from '../views/proveedores.vue'
 import compra from '../views/compraRepuestos.vue'
 import Ajustes from'../views/Ajustes.vue'
+import FallasView from '../views/FallasView.vue'
+import marcas from '../views/MarcasView.vue'
+import atributos from '../views/AtributosView.vue'
 
 const routes = [
   // ... tus rutas (sin cambios) ...
@@ -32,7 +35,10 @@ const routes = [
   { path: "/gestion-gastos", name: "GestionGastos", component: GestionGastos, meta: { requiresAuth: true, allowedRoles: ['administrador'] } },
   { path: '/flujo-caja', name: 'Flujo_caja', component: Flujo_caja, meta: { requiresAuth: true, allowedRoles: ['administrador'] }},
   { path: '/repuestos', component: repuestos, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
-  { path: '/proveedores', component: proveedores, meta: { requiresAuth: true, allowedRoles: ['administrador'] }}
+  { path: '/proveedores', component: proveedores, meta: { requiresAuth: true, allowedRoles: ['administrador'] }},
+   { path: '/marcas', component: marcas, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
+     { path: '/fallas', component: FallasView, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
+     { path: '/atributos', component: atributos, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }}
 ]
 
 const router = createRouter({

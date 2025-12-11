@@ -12,11 +12,13 @@ import vehiculoRoutes from './routes/vehiculoRoutes.js';
 import repuestosRoutes from './routes/repuestosRoutes.js'
 import transaccionRoutes from './routes/transaccionesRoutes.js';
 import tipoTransaccionRoutes from './routes/tipoTransaccionRoutes.js';
+import fallasRoutes from './routes/fallasRoutes.js';
 import diagnosticoRoutes from './routes/diagnosticoRoutes.js';
+import atributosRoutes from './routes/atributosRoutes.js';
 import facturaRoutes from './routes/facturaRoutes.js';
 import proveedoresRoutes from './routes/proveedoresRoutes.js';
 import Compras from './routes/compraRepuestosRoutes.js' // ¡NUEVA RUTA PARA FACTURAS!
-
+import marcaRoutes from './routes/marcaRoutes.js'
 // Configuración de Base de Datos
 import database from './config/database.js';
 import setupAssociations from './models/AssociationsTransacciones.js';
@@ -54,11 +56,14 @@ app.use('/invoices', express.static(invoicesDir));
 // ==================== RUTAS DE LA API ====================
 app.use('/api/auth', authRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
+app.use('/api/fallas', fallasRoutes)
 app.use('/api/repuestos', repuestosRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
-app.use('/api/compras', Compras)
+app.use('/api/compras', Compras);
+app.use('/api/marcas', marcaRoutes)
 app.use('/api/tipos-transaccion', tipoTransaccionRoutes);
+app.use('/api/atributos', atributosRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
 app.use('/api/transacciones', transaccionRoutes);
 app.use('/api/facturas', facturaRoutes); // ¡NUEVA RUTA PARA FACTURAS!

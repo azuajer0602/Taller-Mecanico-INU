@@ -6,8 +6,7 @@ const router = express.Router();
 // GET /api/vehiculos - Obtener todos los vehículos
 router.get('/', vehiculoController.findAll);
 
-// GET /api/vehiculos/diagnostico - Vehículos disponibles para diagnóstico
-router.get('/diagnostico', vehiculoController.findForDiagnostico);
+
 
 // GET /api/vehiculos/:matricula - Obtener vehículo por matrícula
 router.get('/:matricula', vehiculoController.findById);

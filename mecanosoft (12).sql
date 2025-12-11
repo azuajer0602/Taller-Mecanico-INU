@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 10-12-2025 a las 03:14:30
+-- Tiempo de generación: 11-12-2025 a las 01:50:18
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.0.30
 
@@ -29,8 +29,43 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `atributos` (
   `id_atributo` int(11) NOT NULL,
-  `nombre` varchar(100) NOT NULL
+  `nombre` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `atributos`
+--
+
+INSERT INTO `atributos` (`id_atributo`, `nombre`) VALUES
+(1, 'Nivel de Aceite de Motor'),
+(2, 'Fugas de Motor (Aceite/Refrigerante)'),
+(3, 'Estado de Correas y Bandas'),
+(4, 'Mangueras y Abrazaderas'),
+(5, 'Filtro de Aire'),
+(6, 'Soportes de Motor'),
+(7, 'Pastillas de Freno Delanteras'),
+(8, 'Pastillas de Freno Traseras'),
+(9, 'Discos / Tambores de Freno'),
+(10, 'Nivel Líquido de Frenos'),
+(11, 'Freno de Mano'),
+(12, 'Amortiguadores Delanteros'),
+(13, 'Amortiguadores Traseros'),
+(14, 'Estado de Neumáticos (Cauchos)'),
+(15, 'Terminales de Dirección'),
+(16, 'Bujes de Suspensión'),
+(17, 'Alineación del Vehículo'),
+(18, 'Estado de Batería'),
+(19, 'Alternador (Carga)'),
+(20, 'Luces Exteriores (Faros/Stop)'),
+(21, 'Testigos de Tablero (Check Engine)'),
+(22, 'Aire Acondicionado'),
+(23, 'Estado del Embrague (Clutch)'),
+(24, 'Guardapolvos y Tripoides'),
+(25, 'Nivel Aceite de Caja/Transmisión'),
+(26, 'Nivel de Refrigerante (Coolant)'),
+(27, 'Nivel Aceite Dirección Hidráulica'),
+(28, 'Escobillas Limpiaparabrisas'),
+(29, 'Sensor de Cinturones');
 
 -- --------------------------------------------------------
 
@@ -70,7 +105,7 @@ CREATE TABLE `cliente` (
   `correo` varchar(100) NOT NULL,
   `direccion` text DEFAULT NULL,
   `telefono` varchar(20) DEFAULT NULL,
-  `Estado` tinyint(1) NOT NULL
+  `Estado` tinyint(4) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -226,7 +261,8 @@ CREATE TABLE `diagnostico` (
   `num_diagnostico` int(11) NOT NULL,
   `id_vehiculo` varchar(15) NOT NULL,
   `fecha_ingreso` datetime NOT NULL,
-  `descrip_falla` text NOT NULL
+  `descrip_falla` text NOT NULL,
+  `id_falla` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -272,9 +308,8 @@ CREATE TABLE `estado` (
 
 INSERT INTO `estado` (`id_estado`, `nombre_estado`) VALUES
 (1, 'En Espera'),
-(2, 'En Espera'),
-(3, 'En Reparación'),
-(4, 'Reparado');
+(2, 'En Reparación'),
+(3, 'Reparado');
 
 -- --------------------------------------------------------
 
@@ -287,6 +322,15 @@ CREATE TABLE `estados_atributo` (
   `nombre_atributo` varchar(30) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `estados_atributo`
+--
+
+INSERT INTO `estados_atributo` (`id_estado_atributo_fk`, `nombre_atributo`) VALUES
+(1, 'Bueno'),
+(2, 'Malo'),
+(3, 'No Aplica');
+
 -- --------------------------------------------------------
 
 --
@@ -298,7 +342,7 @@ CREATE TABLE `factura` (
   `fecha_fact` date NOT NULL,
   `estado_pago` varchar(20) NOT NULL,
   `id_cliente` int(11) NOT NULL,
-  `id_order` int(11) NOT NULL,
+  `id_servicio` int(11) NOT NULL,
   `metodo_pago` varchar(45) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -318,6 +362,44 @@ CREATE TABLE `facturas` (
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `fallas`
+--
+
+CREATE TABLE `fallas` (
+  `id_falla` int(11) NOT NULL,
+  `nombre_falla` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `fallas`
+--
+
+INSERT INTO `fallas` (`id_falla`, `nombre_falla`) VALUES
+(20, 'Aire Acondicionado no Enfría'),
+(15, 'Alternador no Manda Carga'),
+(8, 'Amortiguadores Explotados/Vencidos'),
+(14, 'Batería Defectuosa'),
+(9, 'Bujes de Meseta Partidos'),
+(21, 'Bujía Rota'),
+(5, 'Bujías Desgastadas/Empastadas'),
+(16, 'Correa de Tiempo (Distribución) Vencida'),
+(4, 'Cuerpo de Aceleración Sucio'),
+(19, 'Discos de Freno Ovalados'),
+(11, 'Electroventilador Defectuoso'),
+(3, 'Filtro de Gasolina Obstruido'),
+(17, 'Fuga de Aceite de Motor'),
+(12, 'Fuga en Envase de Refrigerante'),
+(2, 'Inyectores Sucios/Tapados'),
+(7, 'Muñones (Rótulas) Dañados'),
+(18, 'Pastillas de Freno Cristalizadas/Gastadas'),
+(1, 'Pila de Gasolina (Baja Presión)'),
+(6, 'Terminales de Dirección con Juego'),
+(13, 'Termostato Pegado'),
+(10, 'Tripoides (Juntas Homocinéticas) Sonando');
 
 -- --------------------------------------------------------
 
@@ -347,7 +429,8 @@ CREATE TABLE `itemfacturas` (
   `cantidad` int(11) NOT NULL,
   `precio` decimal(10,2) NOT NULL,
   `createdAt` datetime NOT NULL,
-  `updatedAt` datetime NOT NULL
+  `updatedAt` datetime NOT NULL,
+  `FacturaId` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -360,6 +443,15 @@ CREATE TABLE `marca` (
   `id_marca` int(11) NOT NULL,
   `nombre_marca` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `marca`
+--
+
+INSERT INTO `marca` (`id_marca`, `nombre_marca`) VALUES
+(2, 'Ford'),
+(3, 'JAC'),
+(1, 'Toyota');
 
 -- --------------------------------------------------------
 
@@ -444,9 +536,9 @@ INSERT INTO `repuesto` (`id_repuesto`, `nombre_repuesto`, `precio_unitario`, `st
 CREATE TABLE `servicio` (
   `id_servicio` int(11) NOT NULL,
   `matricula_fk` varchar(15) NOT NULL,
-  `id_cliente` int(11) NOT NULL,
   `id_empleado_fk` int(11) NOT NULL,
   `id_estado` int(11) NOT NULL,
+  `id_falla_reportada` int(11) NOT NULL,
   `entrega` enum('Entregado','No entregado') NOT NULL,
   `fecha_entrada` date NOT NULL,
   `fecha_salida` date NOT NULL,
@@ -570,10 +662,20 @@ CREATE TABLE `vehiculo` (
   `matricula` varchar(15) NOT NULL,
   `id_cliente` int(11) NOT NULL,
   `color` varchar(20) DEFAULT NULL,
-  `id_marca` int(20) DEFAULT NULL,
   `modelo` varchar(45) DEFAULT NULL,
-  `afio` int(11) DEFAULT NULL
+  `afio` int(11) DEFAULT NULL,
+  `marca` int(20) DEFAULT NULL,
+  `diagnosticado` tinyint(4) DEFAULT 0,
+  `activo` tinyint(4) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `vehiculo`
+--
+
+INSERT INTO `vehiculo` (`matricula`, `id_cliente`, `color`, `modelo`, `afio`, `marca`, `diagnosticado`, `activo`) VALUES
+('AFGRGS6', 3, 'Dorado', 'Fiesta', 2025, 2, 0, 1),
+('FEGTE56', 3, 'Gris', 'Carrier', 2025, 3, 0, 1);
 
 --
 -- Índices para tablas volcadas
@@ -650,7 +752,8 @@ ALTER TABLE `detalle_transaccion`
 --
 ALTER TABLE `diagnostico`
   ADD PRIMARY KEY (`num_diagnostico`),
-  ADD KEY `idx_id_vehiculo` (`id_vehiculo`);
+  ADD KEY `idx_id_vehiculo` (`id_vehiculo`),
+  ADD KEY `id_falla` (`id_falla`);
 
 --
 -- Indices de la tabla `empleado`
@@ -676,13 +779,22 @@ ALTER TABLE `estados_atributo`
 ALTER TABLE `factura`
   ADD PRIMARY KEY (`id_factura`),
   ADD KEY `idx_id_cliente` (`id_cliente`),
-  ADD KEY `idx_id_order` (`id_order`);
+  ADD KEY `idx_id_order` (`id_servicio`);
 
 --
 -- Indices de la tabla `facturas`
 --
 ALTER TABLE `facturas`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ClienteId` (`ClienteId`);
+
+--
+-- Indices de la tabla `fallas`
+--
+ALTER TABLE `fallas`
+  ADD PRIMARY KEY (`id_falla`),
+  ADD UNIQUE KEY `nombre_falla` (`nombre_falla`),
+  ADD UNIQUE KEY `nombre_falla_2` (`nombre_falla`);
 
 --
 -- Indices de la tabla `gasto`
@@ -695,13 +807,18 @@ ALTER TABLE `gasto`
 -- Indices de la tabla `itemfacturas`
 --
 ALTER TABLE `itemfacturas`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `FacturaId` (`FacturaId`);
 
 --
 -- Indices de la tabla `marca`
 --
 ALTER TABLE `marca`
-  ADD PRIMARY KEY (`id_marca`);
+  ADD PRIMARY KEY (`id_marca`),
+  ADD UNIQUE KEY `nombre_marca` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_2` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_3` (`nombre_marca`),
+  ADD UNIQUE KEY `nombre_marca_4` (`nombre_marca`);
 
 --
 -- Indices de la tabla `orden_de_trabajo`
@@ -746,7 +863,14 @@ ALTER TABLE `proveedor`
   ADD UNIQUE KEY `nombre_fiscal_21` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_22` (`nombre_fiscal`),
   ADD UNIQUE KEY `nombre_fiscal_23` (`nombre_fiscal`),
-  ADD UNIQUE KEY `nombre_fiscal_24` (`nombre_fiscal`);
+  ADD UNIQUE KEY `nombre_fiscal_24` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_25` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_26` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_27` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_28` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_29` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_30` (`nombre_fiscal`),
+  ADD UNIQUE KEY `nombre_fiscal_31` (`nombre_fiscal`);
 
 --
 -- Indices de la tabla `repuesto`
@@ -764,6 +888,13 @@ ALTER TABLE `repuesto`
   ADD UNIQUE KEY `nombre_repuesto_9` (`nombre_repuesto`),
   ADD UNIQUE KEY `nombre_repuesto_10` (`nombre_repuesto`),
   ADD UNIQUE KEY `nombre_repuesto_11` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_12` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_13` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_14` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_15` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_16` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_17` (`nombre_repuesto`),
+  ADD UNIQUE KEY `nombre_repuesto_18` (`nombre_repuesto`),
   ADD KEY `idx_id_repuesto` (`id_repuesto`);
 
 --
@@ -773,9 +904,9 @@ ALTER TABLE `servicio`
   ADD PRIMARY KEY (`id_servicio`),
   ADD KEY `idx_id_servicio` (`id_servicio`),
   ADD KEY `matricula_fk` (`matricula_fk`),
-  ADD KEY `id_cliente` (`id_cliente`),
   ADD KEY `id_empleado_fk` (`id_empleado_fk`),
-  ADD KEY `id_estado` (`id_estado`);
+  ADD KEY `id_estado` (`id_estado`),
+  ADD KEY `falla_reportada` (`id_falla_reportada`);
 
 --
 -- Indices de la tabla `tarifa_empleado`
@@ -803,7 +934,7 @@ ALTER TABLE `transacciones`
 ALTER TABLE `vehiculo`
   ADD PRIMARY KEY (`matricula`),
   ADD KEY `idx_id_cliente` (`id_cliente`),
-  ADD KEY `id_marca` (`id_marca`);
+  ADD KEY `marca` (`marca`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
@@ -813,7 +944,7 @@ ALTER TABLE `vehiculo`
 -- AUTO_INCREMENT de la tabla `atributos`
 --
 ALTER TABLE `atributos`
-  MODIFY `id_atributo` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_atributo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT de la tabla `atributo_vehiculo`
@@ -858,6 +989,12 @@ ALTER TABLE `facturas`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `fallas`
+--
+ALTER TABLE `fallas`
+  MODIFY `id_falla` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
 -- AUTO_INCREMENT de la tabla `itemfacturas`
 --
 ALTER TABLE `itemfacturas`
@@ -867,7 +1004,7 @@ ALTER TABLE `itemfacturas`
 -- AUTO_INCREMENT de la tabla `marca`
 --
 ALTER TABLE `marca`
-  MODIFY `id_marca` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_marca` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `orden_de_trabajo`
@@ -921,8 +1058,8 @@ ALTER TABLE `atributo_vehiculo`
 -- Filtros para la tabla `compra_repuesto`
 --
 ALTER TABLE `compra_repuesto`
-  ADD CONSTRAINT `fk_proveedor` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedor` (`id_proveedor`),
-  ADD CONSTRAINT `fk_repuesto` FOREIGN KEY (`id_repuesto`) REFERENCES `repuesto` (`id_repuesto`);
+  ADD CONSTRAINT `compra_repuesto_ibfk_10` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedor` (`id_proveedor`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `compra_repuesto_ibfk_11` FOREIGN KEY (`id_repuesto`) REFERENCES `repuesto` (`id_repuesto`) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `concepto_cobro`
@@ -947,27 +1084,45 @@ ALTER TABLE `detalle_repuesto`
 -- Filtros para la tabla `detalle_transaccion`
 --
 ALTER TABLE `detalle_transaccion`
-  ADD CONSTRAINT `detalle_transaccion_ibfk_1` FOREIGN KEY (`id_transaccion`) REFERENCES `transacciones` (`id_transaccion`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `detalle_transaccion_ibfk_2` FOREIGN KEY (`id_tipo_transaccion_fk`) REFERENCES `tipo_transaccion` (`id_tipo_transaccion_pk`);
+  ADD CONSTRAINT `detalle_transaccion_ibfk_2` FOREIGN KEY (`id_tipo_transaccion_fk`) REFERENCES `tipo_transaccion` (`id_tipo_transaccion_pk`),
+  ADD CONSTRAINT `detalle_transaccion_ibfk_3` FOREIGN KEY (`id_transaccion`) REFERENCES `transacciones` (`id_transaccion`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `diagnostico`
 --
 ALTER TABLE `diagnostico`
-  ADD CONSTRAINT `diagnostico_ibfk_1` FOREIGN KEY (`id_vehiculo`) REFERENCES `vehiculo` (`matricula`);
+  ADD CONSTRAINT `diagnostico_ibfk_1` FOREIGN KEY (`id_vehiculo`) REFERENCES `vehiculo` (`matricula`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `diagnostico_ibfk_2` FOREIGN KEY (`id_falla`) REFERENCES `fallas` (`id_falla`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `factura`
 --
 ALTER TABLE `factura`
-  ADD CONSTRAINT `factura_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
-  ADD CONSTRAINT `factura_ibfk_2` FOREIGN KEY (`id_order`) REFERENCES `orden_de_trabajo` (`id_order`);
+  ADD CONSTRAINT `factura_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`);
+
+--
+-- Filtros para la tabla `facturas`
+--
+ALTER TABLE `facturas`
+  ADD CONSTRAINT `facturas_ibfk_1` FOREIGN KEY (`ClienteId`) REFERENCES `cliente` (`id_cliente`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `gasto`
 --
 ALTER TABLE `gasto`
   ADD CONSTRAINT `gasto_ibfk_1` FOREIGN KEY (`id_cate_gasto`) REFERENCES `categoria_gasto` (`id_cate_gasto`);
+
+--
+-- Filtros para la tabla `itemfacturas`
+--
+ALTER TABLE `itemfacturas`
+  ADD CONSTRAINT `ItemFacturas_FacturaId_foreign_idx` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_1` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_2` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_3` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_4` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_5` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `itemfacturas_ibfk_6` FOREIGN KEY (`FacturaId`) REFERENCES `facturas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `orden_de_trabajo`
@@ -985,10 +1140,10 @@ ALTER TABLE `pago_realizado`
 -- Filtros para la tabla `servicio`
 --
 ALTER TABLE `servicio`
-  ADD CONSTRAINT `servicio_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`),
   ADD CONSTRAINT `servicio_ibfk_2` FOREIGN KEY (`matricula_fk`) REFERENCES `vehiculo` (`matricula`),
   ADD CONSTRAINT `servicio_ibfk_3` FOREIGN KEY (`id_empleado_fk`) REFERENCES `empleado` (`id_empleado`),
-  ADD CONSTRAINT `servicio_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estado` (`id_estado`);
+  ADD CONSTRAINT `servicio_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estado` (`id_estado`),
+  ADD CONSTRAINT `servicio_ibfk_5` FOREIGN KEY (`id_falla_reportada`) REFERENCES `fallas` (`id_falla`);
 
 --
 -- Filtros para la tabla `tarifa_empleado`
@@ -1006,7 +1161,8 @@ ALTER TABLE `transacciones`
 -- Filtros para la tabla `vehiculo`
 --
 ALTER TABLE `vehiculo`
-  ADD CONSTRAINT `vehiculo_ibfk_1` FOREIGN KEY (`id_marca`) REFERENCES `marca` (`id_marca`);
+  ADD CONSTRAINT `vehiculo_ibfk_10` FOREIGN KEY (`marca`) REFERENCES `marca` (`id_marca`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `vehiculo_ibfk_9` FOREIGN KEY (`id_cliente`) REFERENCES `cliente` (`id_cliente`) ON DELETE NO ACTION ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

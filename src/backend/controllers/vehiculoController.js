@@ -1,28 +1,30 @@
 import Vehiculo from '../models/Vehiculo.js';
-import Diagnostico from '../models/Diagnostico.js';
+import Marca from '../models/Marca.js';
+import Cliente from '../models/Cliente.js';
 
 export const vehiculoController = {
-    // CREATE - Crear nuevo vehículo
+    
+    // CREATE
     async create(req, res) {
         try {
-            const { matricula, marca, modelo, afio, color, id_cliente } = req.body;
+            const { matricula, id_marca, modelo, afio, color, id_cliente } = req.body;
 
-            // Validación según tu BD - matricula es PK y NOT NULL
-            if (!matricula) {
+            if (!matricula || !id_marca || !id_cliente) {
                 return res.status(400).json({
                     success: false,
-                    message: 'La matrícula es obligatoria'
+                    message: 'Matrícula, Marca y Cliente son obligatorios'
                 });
             }
 
-            // Crear vehículo EXACTAMENTE como está en tu BD
             const nuevoVehiculo = await Vehiculo.create({
                 matricula,
-                marca,
+                id_marca, // Guardamos el ID
                 modelo,
                 afio,
                 color,
-                id_cliente: id_cliente || null
+                id_cliente,
+                activo: true, // Por defecto true según requerimiento
+                diagnosticado: false // Por defecto false según requerimiento
             });
 
             res.status(201).json({
@@ -31,182 +33,90 @@ export const vehiculoController = {
                 data: nuevoVehiculo
             });
         } catch (error) {
-            console.error('Error creando vehículo:', error);
-            
+            console.error(error);
             if (error.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'La matrícula ya está registrada'
-                });
+                return res.status(400).json({ success: false, message: 'La matrícula ya existe' });
             }
-
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor: ' + error.message
-            });
+            res.status(500).json({ success: false, message: error.message });
         }
     },
 
-    // READ - Obtener todos los vehículos
+    // FIND ALL (Con relaciones para mostrar nombres en la tabla)
     async findAll(req, res) {
         try {
             const vehiculos = await Vehiculo.findAll({
-                order: [['marca', 'ASC'], ['modelo', 'ASC']]
+                include: [
+                    { model: Marca, as: 'marca_detalle', attributes: ['nombre_marca'] },
+                    { model: Cliente, as: 'cliente_detalle', attributes: ['nombre', 'apellido', 'cedula'] }
+                ],
+                order: [['matricula', 'ASC']]
             });
             
-            res.json({
-                success: true,
-                count: vehiculos.length,
-                data: vehiculos
-            });
+            res.json({ success: true, count: vehiculos.length, data: vehiculos });
         } catch (error) {
-            console.error('Error obteniendo vehículos:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener vehículos: ' + error.message
-            });
+            console.error(error);
+            res.status(500).json({ success: false, message: error.message });
         }
     },
 
-    // READ - Obtener vehículo por matrícula
+    // FIND BY ID
     async findById(req, res) {
         try {
             const { matricula } = req.params;
-            const vehiculo = await Vehiculo.findByPk(matricula);
-            
-            if (!vehiculo) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Vehículo no encontrado'
-                });
-            }
-            
-            res.json({
-                success: true,
-                data: vehiculo
+            const vehiculo = await Vehiculo.findByPk(matricula, {
+                 include: [
+                    { model: Marca, as: 'marca_detalle' },
+                    { model: Cliente, as: 'cliente_detalle' }
+                ]
             });
+            
+            if (!vehiculo) return res.status(404).json({ success: false, message: 'Vehículo no encontrado' });
+            
+            res.json({ success: true, data: vehiculo });
         } catch (error) {
-            console.error('Error obteniendo vehículo:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener vehículo: ' + error.message
-            });
+            res.status(500).json({ success: false, message: error.message });
         }
     },
 
-    // UPDATE - Actualizar vehículo
+    // UPDATE
     async update(req, res) {
         try {
             const { matricula } = req.params;
-            const { marca, modelo, afio, color, id_cliente } = req.body;
+            // Solo permitimos actualizar datos no clave
+            const { id_marca, modelo, afio, color, id_cliente, activo } = req.body;
 
             const vehiculo = await Vehiculo.findByPk(matricula);
-            
-            if (!vehiculo) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Vehículo no encontrado'
-                });
-            }
+            if (!vehiculo) return res.status(404).json({ success: false, message: 'No encontrado' });
 
-            // Actualizar SOLO campos que existen en tu BD
-            if (marca !== undefined) vehiculo.marca = marca;
+            if (id_marca !== undefined) vehiculo.id_marca = id_marca;
             if (modelo !== undefined) vehiculo.modelo = modelo;
             if (afio !== undefined) vehiculo.afio = afio;
             if (color !== undefined) vehiculo.color = color;
             if (id_cliente !== undefined) vehiculo.id_cliente = id_cliente;
+            if (activo !== undefined) vehiculo.activo = activo;
 
             await vehiculo.save();
 
-            res.json({
-                success: true,
-                message: 'Vehículo actualizado exitosamente',
-                data: vehiculo
-            });
+            res.json({ success: true, message: 'Actualizado correctamente', data: vehiculo });
         } catch (error) {
-            console.error('Error actualizando vehículo:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al actualizar vehículo: ' + error.message
-            });
+            res.status(500).json({ success: false, message: error.message });
         }
     },
 
-    // DELETE - Eliminar vehículo
+    // DELETE (Solo lógico o físico dependiendo de tu regla, aquí dejo el físico que tenías)
     async delete(req, res) {
         try {
             const { matricula } = req.params;
+            const count = await Vehiculo.destroy({ where: { matricula } });
             
-            const vehiculo = await Vehiculo.findByPk(matricula);
+            if (count === 0) return res.status(404).json({ success: false, message: 'No encontrado' });
             
-            if (!vehiculo) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Vehículo no encontrado'
-                });
-            }
-
-            // Verificar relación con diagnostico (FK constraint)
-            const diagnosticosCount = await Diagnostico.count({
-                where: { id_vehiculo: matricula }
-            });
-
-            if (diagnosticosCount > 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'No se puede eliminar el vehículo porque tiene diagnósticos asociados'
-                });
-            }
-
-            await vehiculo.destroy();
-            
-            res.json({
-                success: true,
-                message: 'Vehículo eliminado exitosamente'
-            });
+            res.json({ success: true, message: 'Vehículo eliminado' });
         } catch (error) {
-            console.error('Error eliminando vehículo:', error);
-            
-            if (error.name === 'SequelizeForeignKeyConstraintError') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'No se puede eliminar el vehículo porque tiene registros relacionados'
-                });
+             if (error.name === 'SequelizeForeignKeyConstraintError') {
+                return res.status(400).json({ success: false, message: 'No se puede eliminar, tiene registros asociados.' });
             }
-
-            res.status(500).json({
-                success: false,
-                message: 'Error al eliminar vehículo: ' + error.message
-            });
-        }
-    },
-
-    // Obtener vehículos para diagnóstico (sin diagnósticos)
-    async findForDiagnostico(req, res) {
-        try {
-            const vehiculos = await Vehiculo.findAll({
-                attributes: ['matricula', 'marca', 'modelo', 'afio', 'color'],
-                where: {
-                    matricula: {
-                        [Symbol.for('notIn')]: Vehiculo.sequelize.literal(`
-                            (SELECT id_vehiculo FROM diagnostico)
-                        `)
-                    }
-                },
-                order: [['marca', 'ASC'], ['modelo', 'ASC']]
-            });
-
-            res.json({
-                success: true,
-                count: vehiculos.length,
-                data: vehiculos
-            });
-        } catch (error) {
-            console.error('Error obteniendo vehículos para diagnóstico:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error al obtener vehículos para diagnóstico: ' + error.message
-            });
+            res.status(500).json({ success: false, message: error.message });
         }
     }
 };

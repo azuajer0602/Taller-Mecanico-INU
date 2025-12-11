@@ -4,802 +4,579 @@ import { ref, reactive, computed, onMounted } from 'vue';
 
 const API_BASE = 'http://localhost:3000/api';
 
-// Estado reactivo
+// --- ESTADOS ---
+const vehiculos = ref([]);
+const listaMarcas = ref([]);
+
+// Estado del formulario
 const vehiculo = reactive({
-  placa: '',
-  marca: '',
+  matricula: '', // Usamos matricula como ID
+  id_marca: '',
   modelo: '',
   año: new Date().getFullYear(),
   color: '',
-  cliente: ''
+  id_cliente: null,
+  nombre_cliente_display: '' // Para el input buscador
 });
 
-const vehiculos = ref([]);
-const mostrarFormulario = ref(true);
-const vistaGrid = ref(true);
-const filtroMarca = ref('');
-const filtroPlaca = ref('');
+// Estados de UI
 const loading = ref(false);
-const mensaje = ref('');
-const mensajeTipo = ref('alert-success');
-const mensajeIcono = ref('fa-check');
-const errorPlaca = ref('');
-const errorMarca = ref('');
-const errorColor = ref('');
-const errorCliente = ref('');
-const vehiculoEditId = ref(null);
+const mostrarModal = ref(false); // Ahora usaremos un Modal en lugar de card colapsable
+const vehiculoEditando = ref(false);
+const busqueda = ref(''); // Filtro general de la tabla
 
-// Computed properties
-const formValido = computed(() => {
-  return vehiculo.placa && 
-         vehiculo.placa.length >= 3 &&
-         vehiculo.marca && 
-         vehiculo.modelo && 
-         vehiculo.año;
-});
+// Estados del Buscador de Clientes (Typeahead)
+const sugerenciasClientes = ref([]);
+const buscandoClienteAPI = ref(false);
+const mostrarSugerencias = ref(false);
 
-const marcasUnicas = computed(() => {
-  return [...new Set(vehiculos.value.map(v => v.marca))].sort();
-});
+// --- COMPUTED ---
+// Estadísticas para las tarjetas superiores
+const totalVehiculos = computed(() => vehiculos.value.length);
+const vehiculosEnTaller = computed(() => vehiculos.value.filter(v => v.activo).length);
 
+// Filtro de tabla
 const vehiculosFiltrados = computed(() => {
-  let filtrados = vehiculos.value;
-  
-  if (filtroMarca.value) {
-    filtrados = filtrados.filter(v => 
-      v.marca.toLowerCase().includes(filtroMarca.value.toLowerCase())
-    );
-  }
-  
-  if (filtroPlaca.value) {
-    filtrados = filtrados.filter(v => 
-      v.placa.toLowerCase().includes(filtroPlaca.value.toLowerCase())
-    );
-  }
-  
-  return filtrados;
+  if (!busqueda.value) return vehiculos.value;
+  const lower = busqueda.value.toLowerCase();
+  return vehiculos.value.filter(v => 
+    v.matricula.toLowerCase().includes(lower) ||
+    v.modelo.toLowerCase().includes(lower) ||
+    (v.marca_detalle?.nombre_marca || '').toLowerCase().includes(lower) ||
+    (v.cliente_detalle?.nombre || '').toLowerCase().includes(lower)
+  );
 });
 
-const vehiculoEditando = computed(() => {
-  return vehiculoEditId.value !== null;
+// Validación
+const formValido = computed(() => {
+  return vehiculo.matricula.length >= 3 && 
+         vehiculo.id_marca && 
+         vehiculo.modelo && 
+         vehiculo.año && 
+         vehiculo.id_cliente;
 });
 
-// Métodos
-const validarPlaca = (placa) => {
-  const regex = /^[A-Z0-9]+$/i;
-  if (!regex.test(placa)) {
-    return 'La placa solo puede contener letras y números (sin espacios ni caracteres especiales)';
-  }
-  if (placa.length < 3) {
-    return 'La placa debe tener al menos 3 caracteres';
-  }
-  return '';
-};
-
-const validarTexto = (texto) => {
-  if (!texto) return '';
-  const regex = /^[A-ZÁÉÍÓÚÑ\s]+$/i;
-  if (!regex.test(texto)) {
-    return 'Este campo solo puede contener letras y espacios';
-  }
-  return '';
-};
-
-const validarPlacaEnTiempoReal = () => {
-  vehiculo.placa = vehiculo.placa.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-  errorPlaca.value = '';
-};
-
-const validarPlacaFinal = () => {
-  errorPlaca.value = validarPlaca(vehiculo.placa);
-};
-
-const filtrarSoloLetras = (campo) => {
-  vehiculo[campo] = vehiculo[campo].replace(/[^A-ZÁÉÍÓÚÑ\s]/gi, '');
-};
-
-const validarMarca = () => {
-  const error = validarTexto(vehiculo.marca);
-  if (error) {
-    errorMarca.value = error;
-  } else {
-    errorMarca.value = '';
-  }
+// --- MÉTODOS DE CARGA ---
+const cargarData = async () => {
+  loading.value = true;
+  await Promise.all([cargarVehiculos(), cargarMarcas()]);
+  loading.value = false;
 };
 
 const cargarVehiculos = async () => {
-  loading.value = true;
   try {
-    const response = await fetch(`${API_BASE}/vehiculos`);
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      vehiculos.value = data.data;
-      console.log(`✅ Cargados ${vehiculos.value.length} vehículos`);
-    } else {
-      throw new Error(data.message || 'Error en la respuesta del servidor');
-    }
+    const res = await fetch(`${API_BASE}/vehiculos`);
+    const data = await res.json();
+    if(data.success) vehiculos.value = data.data;
+  } catch (e) { console.error(e); }
+};
+
+const cargarMarcas = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/marcas`);
+    const data = await res.json();
+    if(data.success) listaMarcas.value = data.data;
+  } catch (e) { console.error(e); }
+};
+
+// --- LÓGICA BUSCADOR CLIENTES (AUTOCOMPLETADO) ---
+const buscarClienteInput = async () => {
+  const termino = vehiculo.nombre_cliente_display;
+  
+  if (!termino || termino.length < 2) {
+    sugerenciasClientes.value = [];
+    mostrarSugerencias.value = false;
+    if (termino.length === 0) vehiculo.id_cliente = null;
+    return;
+  }
+
+  buscandoClienteAPI.value = true;
+  try {
+    const res = await fetch(`${API_BASE}/clientes/buscar?q=${termino}`);
+    const data = await res.json();
+    const resultados = data.body || data.data || []; // Ajusta según tu backend
+    sugerenciasClientes.value = Array.isArray(resultados) ? resultados : [];
+    mostrarSugerencias.value = true;
   } catch (error) {
-    console.error('Error cargando vehículos:', error);
-    mostrarMensaje(
-      'Error al cargar vehículos: ' + error.message, 
-      'alert-danger', 
-      'fa-exclamation-triangle'
-    );
+    console.error(error);
   } finally {
-    loading.value = false;
+    buscandoClienteAPI.value = false;
+  }
+};
+
+const seleccionarCliente = (c) => {
+  vehiculo.id_cliente = c.id_cliente;
+  vehiculo.nombre_cliente_display = `${c.nombre} ${c.apellido} (${c.cedula})`;
+  mostrarSugerencias.value = false;
+};
+
+// --- CRUD VEHÍCULO ---
+const abrirModal = (editar = false, item = null) => {
+  mostrarModal.value = true;
+  vehiculoEditando.value = editar;
+  
+  if (editar && item) {
+    // Rellenar datos
+    vehiculo.matricula = item.matricula;
+    vehiculo.id_marca = item.id_marca;
+    vehiculo.modelo = item.modelo;
+    vehiculo.año = item.afio;
+    vehiculo.color = item.color;
+    vehiculo.id_cliente = item.id_cliente;
+    
+    if (item.cliente_detalle) {
+      vehiculo.nombre_cliente_display = `${item.cliente_detalle.nombre} ${item.cliente_detalle.apellido} (${item.cliente_detalle.cedula})`;
+    }
+  } else {
+    // Limpiar
+    Object.assign(vehiculo, {
+      matricula: '', id_marca: '', modelo: '', 
+      año: new Date().getFullYear(), color: '', 
+      id_cliente: null, nombre_cliente_display: ''
+    });
   }
 };
 
 const guardarVehiculo = async () => {
-  // Validaciones en frontend antes de enviar
-  const errores = [];
-  
-  errorPlaca.value = validarPlaca(vehiculo.placa);
-  if (errorPlaca.value) errores.push(errorPlaca.value);
-  
-  const errorMarcaValidacion = validarTexto(vehiculo.marca);
-  if (errorMarcaValidacion) {
-    errorMarca.value = errorMarcaValidacion;
-    errores.push(errorMarcaValidacion);
-  }
-  
-  const errorColorValidacion = validarTexto(vehiculo.color);
-  if (errorColorValidacion) {
-    errorColor.value = errorColorValidacion;
-    errores.push(errorColorValidacion);
-  }
-  
-  const errorClienteValidacion = validarTexto(vehiculo.cliente);
-  if (errorClienteValidacion) {
-    errorCliente.value = errorClienteValidacion;
-    errores.push(errorClienteValidacion);
-  }
+  if (!formValido.value) return;
 
-  if (errores.length > 0) {
-    mostrarMensaje(
-      'Por favor corrija los errores en el formulario', 
-      'alert-danger', 
-      'fa-exclamation-triangle'
-    );
-    return;
-  }
+  const payload = {
+    matricula: vehiculo.matricula.toUpperCase().trim(),
+    id_marca: vehiculo.id_marca,
+    modelo: vehiculo.modelo,
+    afio: vehiculo.año,
+    color: vehiculo.color,
+    id_cliente: vehiculo.id_cliente
+  };
 
-  if (!formValido.value) {
-    mostrarMensaje(
-      'Por favor complete todos los campos requeridos (Placa, Marca, Modelo, Año)', 
-      'alert-warning', 
-      'fa-exclamation-circle'
-    );
-    return;
-  }
-
-  loading.value = true;
+  const url = vehiculoEditando.value 
+    ? `${API_BASE}/vehiculos/${vehiculo.matricula}`
+    : `${API_BASE}/vehiculos`;
+    
+  const method = vehiculoEditando.value ? 'PUT' : 'POST';
 
   try {
-    // Preparar datos para el backend
-    const datosParaBackend = {
-      matricula: vehiculo.placa.toUpperCase().trim(),
-      marca: vehiculo.marca,
-      modelo: vehiculo.modelo,
-      afio: parseInt(vehiculo.año),
-      color: vehiculo.color || '',
-      id_cliente: null
-    };
-
-    let url, method;
-    
-    if (vehiculoEditando.value) {
-      method = 'PUT';
-      url = `${API_BASE}/vehiculos/${vehiculoEditId.value}`;
-    } else {
-      method = 'POST';
-      url = `${API_BASE}/vehiculos`;
-    }
-
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       method,
-      headers: { 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify(datosParaBackend)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-
-    const data = await response.json();
+    const data = await res.json();
     
     if (data.success) {
-      const mensajeTexto = vehiculoEditando.value ? 
-        'Vehículo actualizado exitosamente' : 
-        'Vehículo registrado exitosamente';
-      
-      mostrarMensaje(mensajeTexto, 'alert-success', 'fa-check');
-      await cargarVehiculos();
-      limpiarFormulario();
+      alert(vehiculoEditando.value ? 'Vehículo actualizado' : 'Vehículo registrado');
+      mostrarModal.value = false;
+      cargarVehiculos();
     } else {
-      if (data.message.includes('matrícula') || data.message.includes('duplicada')) {
-        errorPlaca.value = 'Esta placa ya está registrada en el sistema';
-      } else {
-        mostrarMensaje('Error: ' + data.message, 'alert-danger', 'fa-exclamation-triangle');
-      }
+      alert(data.message);
     }
-  } catch (error) {
-    console.error('Error guardando vehículo:', error);
-    mostrarMensaje(
-      'Error de conexión al guardar vehículo', 
-      'alert-danger', 
-      'fa-exclamation-triangle'
-    );
-  } finally {
-    loading.value = false;
+  } catch (e) {
+    alert('Error al guardar');
   }
-};
-
-const editarVehiculo = (vehiculoEdit) => {
-  Object.assign(vehiculo, {
-    placa: vehiculoEdit.placa,
-    marca: vehiculoEdit.marca,
-    modelo: vehiculoEdit.modelo,
-    año: vehiculoEdit.año,
-    color: vehiculoEdit.color || '',
-    cliente: vehiculoEdit.cliente || ''
-  });
-  vehiculoEditId.value = vehiculoEdit.id;
-  mostrarFormulario.value = true;
-  mensaje.value = '';
-  
-  // Scroll suave al formulario
-  setTimeout(() => {
-    const formulario = document.querySelector('.card');
-    if (formulario) {
-      formulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, 100);
 };
 
 const eliminarVehiculo = async (id) => {
-  if (!confirm('¿Está seguro de eliminar este vehículo? Esta acción no se puede deshacer.')) {
-    return;
-  }
-
-  loading.value = true;
+  if(!confirm('¿Eliminar este vehículo?')) return;
   try {
-    const response = await fetch(`${API_BASE}/vehiculos/${id}`, {
-      method: 'DELETE'
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      mostrarMensaje('Vehículo eliminado exitosamente', 'alert-success', 'fa-check');
-      await cargarVehiculos();
-    } else {
-      mostrarMensaje('Error: ' + data.message, 'alert-danger', 'fa-exclamation-triangle');
-    }
-  } catch (error) {
-    console.error('Error eliminando vehículo:', error);
-    mostrarMensaje(
-      'Error de conexión al eliminar vehículo', 
-      'alert-danger', 
-      'fa-exclamation-triangle'
-    );
-  } finally {
-    loading.value = false;
-  }
+    const res = await fetch(`${API_BASE}/vehiculos/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if(data.success) cargarVehiculos();
+    else alert(data.message);
+  } catch (e) { alert('Error al eliminar'); }
 };
 
-const limpiarFormulario = () => {
-  Object.assign(vehiculo, {
-    placa: '',
-    marca: '',
-    modelo: '',
-    año: new Date().getFullYear(),
-    color: '',
-    cliente: ''
-  });
-  vehiculoEditId.value = null;
-  errorPlaca.value = '';
-  errorMarca.value = '';
-  errorColor.value = '';
-  errorCliente.value = '';
-  mensaje.value = '';
-};
-
-const limpiarFiltros = () => {
-  filtroMarca.value = '';
-  filtroPlaca.value = '';
-};
-
-const mostrarMensaje = (texto, tipo, icono) => {
-  mensaje.value = texto;
-  mensajeTipo.value = tipo;
-  mensajeIcono.value = icono;
-  
-  // Auto-ocultar mensaje después de 5 segundos
-  setTimeout(() => {
-    if (mensaje.value === texto) {
-      mensaje.value = '';
-    }
-  }, 5000);
-};
-
-// Cargar vehículos al montar el componente
-onMounted(() => {
-  cargarVehiculos();
-});
+onMounted(cargarData);
 </script>
 
 <template>
-  <Side/>
-  <div class="main-content">
-    <div class="container-fluid">
-      <!-- Header con Bootstrap -->
-      <div class="row align-items-center mb-4">
-        <div class="col">
-          <h2 class="mb-0">
-            <i class="fas fa-car me-2"></i>Gestión de Vehículos
-          </h2>
+  <div class="dashboard-container">
+    <Side />
+    
+    <div class="main-content">
+      
+      <div class="dashboard-header animate-fade-in">
+        <div class="header-content">
+          <div>
+            <h1 class="page-title">Gestión de Vehículos</h1>
+            <p class="page-subtitle">Administra la flota y asignaciones de clientes</p>
+          </div>
+          <div class="user-profile">
+            <div class="avatar-circle">A</div>
+            <div>
+              <div class="user-name">Administrador</div>
+              <div class="user-role">MecanoSoft</div>
+            </div>
+          </div>
         </div>
-        <div class="col-auto">
-          <button 
-            class="btn btn-warning" 
-            @click="mostrarFormulario = !mostrarFormulario"
-          >
-            <i class="fas" :class="mostrarFormulario ? 'fa-eye-slash' : 'fa-plus'"></i>
-            {{ mostrarFormulario ? 'Ocultar Formulario' : 'Nuevo Vehículo' }}
+      </div>
+
+      <div class="row mb-4 g-3">
+        <div class="col-md-6 col-lg-6">
+          <div class="metric-card primary-card h-100">
+            <div>
+              <div class="metric-value">{{ totalVehiculos }}</div>
+              <div class="metric-label">Vehículos Registrados</div>
+            </div>
+            <div class="metric-icon-container bg-primary-soft">
+              <i class="fas fa-car text-primary"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-6">
+          <div class="metric-card success-card h-100">
+            <div>
+              <div class="metric-value">{{ vehiculosEnTaller }}</div>
+              <div class="metric-label">En Taller (Activos)</div>
+            </div>
+            <div class="metric-icon-container bg-success-soft">
+              <i class="fas fa-tools text-success"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-card shadow-sm bg-white">
+        
+        <div class="p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div class="search-box position-relative" style="min-width: 250px;">
+            <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 50%; transform: translateY(-50%);"></i>
+            <input 
+              v-model="busqueda" 
+              type="text" 
+              class="form-control ps-5" 
+              placeholder="Buscar placa, modelo o cliente..."
+            >
+          </div>
+          <button class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm" @click="abrirModal(false)">
+            <i class="fas fa-plus me-2"></i> Nuevo Vehículo
           </button>
         </div>
+
+        <div class="table-responsive">
+          <table class="table custom-table mb-0">
+            <thead>
+              <tr>
+                <th>Placa</th>
+                <th>Vehículo</th>
+                <th>Propietario</th>
+                <th>Año / Color</th>
+                <th>Estado</th>
+                <th class="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in vehiculosFiltrados" :key="v.matricula" class="hover-row">
+                <td data-label="Placa">
+                  <span class="badge bg-light text-dark border fw-bold px-3 py-2">
+                    {{ v.matricula }}
+                  </span>
+                </td>
+                <td data-label="Vehículo">
+                  <div class="d-flex align-items-center">
+                    <div class="client-avatar-small me-2">
+                      <i class="fas fa-car-side"></i>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-dark">{{ v.marca_detalle?.nombre_marca }}</div>
+                      <div class="text-muted small">{{ v.modelo }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td data-label="Propietario">
+                  <div v-if="v.cliente_detalle">
+                    <div class="fw-bold text-dark">{{ v.cliente_detalle.nombre }} {{ v.cliente_detalle.apellido }}</div>
+                    <div class="text-muted small">CI: {{ v.cliente_detalle.cedula }}</div>
+                  </div>
+                  <span v-else class="text-muted fst-italic">Sin asignar</span>
+                </td>
+                <td data-label="Detalles">
+                  <div class="d-flex flex-column">
+                    <span class="small"><i class="fas fa-calendar me-1 text-muted"></i> {{ v.afio }}</span>
+                    <span class="small"><i class="fas fa-palette me-1 text-muted"></i> {{ v.color }}</span>
+                  </div>
+                </td>
+                <td data-label="Estado">
+                  <span v-if="v.activo" class="badge bg-success-soft text-success px-3 rounded-pill">
+                    En Taller
+                  </span>
+                  <span v-else class="badge bg-secondary-soft text-secondary px-3 rounded-pill">
+                    Inactivo
+                  </span>
+                </td>
+                <td data-label="Acciones" class="text-end">
+                  <button class="btn btn-icon text-warning me-2" @click="abrirModal(true, v)" title="Editar">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-icon text-danger" @click="eliminarVehiculo(v.matricula)" title="Eliminar">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="vehiculosFiltrados.length === 0">
+                <td colspan="6" class="text-center py-5 text-muted">
+                  <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
+                  <p>No se encontraron vehículos</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Alertas -->
-      <div v-if="mensaje" class="alert" :class="mensajeTipo" role="alert">
-        <i class="fas" :class="mensajeIcono"></i> {{ mensaje }}
-      </div>
+    </div>
 
-      <!-- Formulario con Bootstrap -->
-      <div v-if="mostrarFormulario" class="card shadow-sm mb-4">
-        <div class="card-header bg-dark text-warning">
-          <h5 class="card-title mb-0">
-            <i class="fas fa-clipboard-list me-2"></i>
+    <div v-if="mostrarModal" class="modal-overlay" @click.self="mostrarModal = false">
+      <div class="modal-card animate-slide-up">
+        <div class="modal-header">
+          <h5 class="fw-bold m-0">
+            <i class="fas fa-car me-2 text-primary"></i>
             {{ vehiculoEditando ? 'Editar Vehículo' : 'Registrar Nuevo Vehículo' }}
           </h5>
+          <button class="btn-close" @click="mostrarModal = false"></button>
         </div>
         
-        <div class="card-body">
+        <div class="modal-body">
           <form @submit.prevent="guardarVehiculo">
             <div class="row g-3">
-              <!-- Columna Izquierda -->
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Placa *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    v-model="vehiculo.placa" 
-                    required
-                    :disabled="vehiculoEditando"
-                    :class="{'is-invalid': errorPlaca}"
-                    placeholder="Ej: ABC123"
-                    maxlength="10"
-                    @input="validarPlacaEnTiempoReal"
-                    @blur="validarPlacaFinal"
-                  >
-                  <div v-if="errorPlaca" class="invalid-feedback">
-                    {{ errorPlaca }}
-                  </div>
-                </div>
-                
-                <div class="mb-3">
-                  <label class="form-label">Marca *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    v-model="vehiculo.marca" 
-                    required 
-                    :disabled="loading"
-                    :class="{'is-invalid': errorMarca}"
-                    placeholder="Ej: Toyota"
-                    @input="filtrarSoloLetras('marca')"
-                    @blur="validarMarca"
-                  >
-                  <div v-if="errorMarca" class="invalid-feedback">
-                    {{ errorMarca }}
-                  </div>
-                </div>
-                
-                <div class="mb-3">
-                  <label class="form-label">Modelo *</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    v-model="vehiculo.modelo" 
-                    required 
-                    :disabled="loading"
-                    placeholder="Ej: Corolla"
-                  >
-                </div>
+                <label class="form-label small fw-bold text-muted">Placa</label>
+                <input 
+                  v-model="vehiculo.matricula" 
+                  type="text" 
+                  class="form-control" 
+                  :disabled="vehiculoEditando"
+                  placeholder="Ej: AB123CD"
+                  required
+                >
               </div>
-              
-              <!-- Columna Derecha -->
+
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Año *</label>
-                  <input 
-                    type="number" 
-                    class="form-control" 
-                    v-model="vehiculo.año" 
-                    required
-                    :disabled="loading"
-                    :max="new Date().getFullYear() + 1"
-                    min="1900"
-                    placeholder="Ej: 2023"
-                  >
-                </div>
-                
-                <div class="mb-3">
-                  <label class="form-label">Color</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    v-model="vehiculo.color" 
-                    :disabled="loading"
-                    :class="{'is-invalid': errorColor}"
-                    placeholder="Ej: Rojo"
-                    @input="filtrarSoloLetras('color')"
-                  >
-                  <div v-if="errorColor" class="invalid-feedback">
-                    {{ errorColor }}
-                  </div>
-                </div>
-                
-                <div class="mb-3">
-                  <label class="form-label">Cliente</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    v-model="vehiculo.cliente" 
-                    :disabled="loading"
-                    :class="{'is-invalid': errorCliente}"
-                    placeholder="Ej: Juan Pérez"
-                    @input="filtrarSoloLetras('cliente')"
-                  >
-                  <div v-if="errorCliente" class="invalid-feedback">
-                    {{ errorCliente }}
-                  </div>
-                  <small class="form-text text-muted">Nombre del cliente propietario</small>
-                </div>
+                <label class="form-label small fw-bold text-muted">Marca</label>
+                <select v-model="vehiculo.id_marca" class="form-select" required>
+                  <option value="" disabled>Seleccione...</option>
+                  <option v-for="m in listaMarcas" :key="m.id_marca" :value="m.id_marca">
+                    {{ m.nombre_marca }}
+                  </option>
+                </select>
               </div>
-              
-              <!-- Acciones -->
-              <div class="col-12">
-                <div class="d-flex gap-2 justify-content-end border-top pt-3">
-                  <button 
-                    type="button" 
-                    class="btn btn-secondary" 
-                    @click="limpiarFormulario"
-                    :disabled="loading"
+
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-muted">Modelo</label>
+                <input v-model="vehiculo.modelo" type="text" class="form-control" placeholder="Ej: Corolla" required>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Año</label>
+                <input v-model="vehiculo.año" type="number" class="form-control" required>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Color</label>
+                <input v-model="vehiculo.color" type="text" class="form-control" placeholder="Rojo">
+              </div>
+
+              <div class="col-12 position-relative">
+                <label class="form-label small fw-bold text-muted">Cliente Propietario</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white border-end-0">
+                    <i class="fas" :class="buscandoClienteAPI ? 'fa-spinner fa-spin' : 'fa-search'"></i>
+                  </span>
+                  <input 
+                    type="text" 
+                    class="form-control border-start-0 ps-0" 
+                    v-model="vehiculo.nombre_cliente_display"
+                    @input="buscarClienteInput"
+                    placeholder="Buscar por cédula o nombre..."
+                    :class="{'is-valid': vehiculo.id_cliente}"
+                    autocomplete="off"
                   >
-                    <i class="fas fa-times me-1"></i>Cancelar
-                  </button>
-                  <button 
-                    type="submit" 
-                    class="btn btn-primary" 
-                    :disabled="!formValido || loading"
-                  >
-                    <i class="fas" :class="loading ? 'fa-spinner fa-spin' : (vehiculoEditando ? 'fa-save' : 'fa-check')"></i>
-                    {{ loading ? 'Procesando...' : (vehiculoEditando ? 'Actualizar' : 'Registrar') }}
+                  <button v-if="vehiculo.id_cliente" class="btn btn-outline-secondary" type="button" @click="vehiculo.id_cliente = null; vehiculo.nombre_cliente_display = ''">
+                    <i class="fas fa-times"></i>
                   </button>
                 </div>
+                
+                <div v-if="mostrarSugerencias && sugerenciasClientes.length > 0" class="suggestions-dropdown shadow-sm">
+                  <div 
+                    v-for="c in sugerenciasClientes" 
+                    :key="c.id_cliente"
+                    class="suggestion-item"
+                    @click="seleccionarCliente(c)"
+                  >
+                    <div class="fw-bold text-dark">{{ c.nombre }} {{ c.apellido }}</div>
+                    <div class="small text-muted">CI: {{ c.cedula }}</div>
+                  </div>
+                </div>
+                
+                <div v-if="vehiculo.id_cliente" class="form-text text-success">
+                  <i class="fas fa-check-circle"></i> Cliente asignado.
+                </div>
               </div>
+
+            </div>
+            
+            <div class="modal-footer border-0 px-0 pb-0 mt-4">
+              <button type="button" class="btn btn-light text-muted" @click="mostrarModal = false">Cancelar</button>
+              <button type="submit" class="btn btn-primary px-4 fw-bold" :disabled="!formValido">
+                {{ vehiculoEditando ? 'Actualizar' : 'Registrar' }}
+              </button>
             </div>
           </form>
         </div>
       </div>
-
-      <!-- Filtros con Bootstrap -->
-      <div class="row mb-3" v-if="vehiculos.length > 0">
-        <div class="col-md-4">
-          <label class="form-label">Filtrar por marca:</label>
-          <select v-model="filtroMarca" class="form-select" :disabled="loading">
-            <option value="">Todas las marcas</option>
-            <option v-for="marca in marcasUnicas" :key="marca" :value="marca">{{ marca }}</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Buscar por placa:</label>
-          <input 
-            type="text" 
-            class="form-control" 
-            v-model="filtroPlaca" 
-            :disabled="loading"
-            placeholder="Ingrese placa..."
-          >
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <button class="btn btn-outline-secondary" @click="limpiarFiltros" :disabled="loading">
-            <i class="fas fa-times me-1"></i>Limpiar Filtros
-          </button>
-        </div>
-      </div>
-
-      <!-- Estadísticas -->
-      <div class="row mb-3" v-if="vehiculos.length > 0">
-        <div class="col-12">
-          <div class="d-flex gap-3 flex-wrap">
-            <span class="badge bg-primary fs-6">
-              <i class="fas fa-car me-1"></i>Total: {{ vehiculos.length }}
-            </span>
-            <span class="badge bg-success fs-6" v-if="filtroMarca">
-              <i class="fas fa-filter me-1"></i>Marca: {{ filtroMarca }}
-            </span>
-            <span class="badge bg-info fs-6" v-if="filtroPlaca">
-              <i class="fas fa-search me-1"></i>Placa: {{ filtroPlaca }}
-            </span>
-            <span class="badge bg-warning fs-6">
-              <i class="fas fa-eye me-1"></i>Mostrando: {{ vehiculosFiltrados.length }}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Lista de vehículos con Bootstrap -->
-      <div v-if="vehiculosFiltrados.length > 0">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="mb-0">
-            <i class="fas fa-list me-2"></i>Vehículos Registrados
-          </h5>
-          
-          <div class="btn-group btn-group-sm">
-            <button 
-              class="btn" 
-              :class="vistaGrid ? 'btn-primary' : 'btn-outline-primary'"
-              @click="vistaGrid = true"
-              :disabled="loading"
-            >
-              <i class="fas fa-th"></i> Grid
-            </button>
-            <button 
-              class="btn" 
-              :class="!vistaGrid ? 'btn-primary' : 'btn-outline-primary'"
-              @click="vistaGrid = false"
-              :disabled="loading"
-            >
-              <i class="fas fa-list"></i> Lista
-            </button>
-          </div>
-        </div>
-        
-        <!-- Vista Grid con Bootstrap -->
-        <div v-if="vistaGrid" class="row g-3">
-          <div 
-            v-for="vehiculo in vehiculosFiltrados" 
-            :key="vehiculo.id" 
-            class="col-xl-3 col-lg-4 col-md-6"
-          >
-            <div class="card h-100 shadow-sm">
-              <div class="card-header bg-light py-2">
-                <div class="d-flex justify-content-between align-items-center">
-                  <h6 class="mb-0 text-uppercase fw-bold text-primary">{{ vehiculo.placa }}</h6>
-                  <span class="badge bg-success">Activo</span>
-                </div>
-              </div>
-              <div class="card-body">
-                <h6 class="card-title">{{ vehiculo.marca }} {{ vehiculo.modelo }}</h6>
-                <div class="card-text small">
-                  <div class="mb-1">
-                    <i class="fas fa-calendar text-muted me-1"></i>
-                    <strong>Año:</strong> {{ vehiculo.año }}
-                  </div>
-                  <div class="mb-1" v-if="vehiculo.color">
-                    <i class="fas fa-palette text-muted me-1"></i>
-                    <strong>Color:</strong> {{ vehiculo.color }}
-                  </div>
-                  <div class="mb-1">
-                    <i class="fas fa-user text-muted me-1"></i>
-                    <strong>Cliente:</strong> {{ vehiculo.cliente || 'No especificado' }}
-                  </div>
-                  <div class="mb-1">
-                    <i class="fas fa-hashtag text-muted me-1"></i>
-                    <strong>ID:</strong> {{ vehiculo.id }}
-                  </div>
-                </div>
-              </div>
-              <div class="card-footer bg-transparent py-2">
-                <div class="btn-group w-100">
-                  <button 
-                    class="btn btn-sm btn-outline-warning"
-                    @click="editarVehiculo(vehiculo)"
-                    :disabled="loading"
-                    title="Editar vehículo"
-                  >
-                    <i class="fas fa-edit"></i> Editar
-                  </button>
-                  <button 
-                    class="btn btn-sm btn-outline-danger"
-                    @click="eliminarVehiculo(vehiculo.id)"
-                    :disabled="loading"
-                    title="Eliminar vehículo"
-                  >
-                    <i class="fas fa-trash"></i> Eliminar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Vista Lista con Bootstrap -->
-        <div v-else class="list-group">
-          <div 
-            v-for="vehiculo in vehiculosFiltrados" 
-            :key="vehiculo.id" 
-            class="list-group-item list-group-item-action"
-          >
-            <div class="d-flex w-100 justify-content-between align-items-center">
-              <div class="d-flex align-items-center flex-grow-1">
-                <div class="me-4">
-                  <h6 class="mb-0 text-uppercase fw-bold text-primary">{{ vehiculo.placa }}</h6>
-                  <small class="text-muted">ID: {{ vehiculo.id }}</small>
-                </div>
-                <div class="flex-grow-1">
-                  <strong class="d-block">{{ vehiculo.marca }} {{ vehiculo.modelo }}</strong>
-                  <small class="text-muted d-block">
-                    <i class="fas fa-calendar me-1"></i>Año: {{ vehiculo.año }} | 
-                    <i class="fas fa-palette me-1"></i>Color: {{ vehiculo.color || 'N/A' }}
-                  </small>
-                  <small class="text-muted">
-                    <i class="fas fa-user me-1"></i>Cliente: {{ vehiculo.cliente || 'No especificado' }}
-                  </small>
-                </div>
-              </div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-success">Activo</span>
-                <button 
-                  class="btn btn-sm btn-outline-warning"
-                  @click="editarVehiculo(vehiculo)"
-                  :disabled="loading"
-                  title="Editar vehículo"
-                >
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button 
-                  class="btn btn-sm btn-outline-danger"
-                  @click="eliminarVehiculo(vehiculo.id)"
-                  :disabled="loading"
-                  title="Eliminar vehículo"
-                >
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Estado vacío con Bootstrap -->
-      <div v-else class="text-center py-5">
-        <i class="fas fa-car fa-3x mb-3 text-muted"></i>
-        <h4 class="text-muted">{{ vehiculos.length === 0 ? 'No hay vehículos registrados' : 'No se encontraron resultados' }}</h4>
-        <p v-if="vehiculos.length === 0 && !mostrarFormulario" class="mt-3">
-          <button class="btn btn-primary" @click="mostrarFormulario = true">
-            <i class="fas fa-plus me-1"></i>Registrar Primer Vehículo
-          </button>
-        </p>
-        <p v-else-if="vehiculos.length > 0" class="text-muted">
-          Intenta con otros criterios de búsqueda
-          <button class="btn btn-sm btn-outline-primary ms-2" @click="limpiarFiltros">
-            <i class="fas fa-times me-1"></i>Limpiar filtros
-          </button>
-        </p>
-      </div>
-
-      <!-- Loading overlay -->
-      <div v-if="loading" class="loading-overlay">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando...</span>
-        </div>
-      </div>
     </div>
+
   </div>
 </template>
 
 <style scoped>
-.main-content {
-  padding: 20px;
+/* ESTILOS BASE (Copiados y adaptados de tu referencia) */
+.dashboard-container {
+  display: flex;
   min-height: 100vh;
-  margin-left: 250px;
-  background: linear-gradient(#ff7e5f, #feb47b);
+  background-color: #f3f6f9;
+  font-family: 'Poppins', sans-serif;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  margin-left: 250px; /* Asumiendo que tu sidebar mide esto */
+  transition: all 0.3s ease;
+}
+
+/* Header */
+.dashboard-header {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  margin-bottom: 2rem;
+}
+
+.header-content {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.card {
-  transition: transform 0.2s, box-shadow 0.2s;
-  border: 1px solid #dee2e6;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
-}
-
-.alert {
-  margin-bottom: 1rem;
-  border-left: 4px solid;
-  border-radius: 0.375rem;
-}
-
-.alert-success {
-  border-left-color: #198754;
-  background-color: #d1e7dd;
-}
-
-.alert-danger {
-  border-left-color: #dc3545;
-  background-color: #f8d7da;
-}
-
-.alert-warning {
-  border-left-color: #ffc107;
-  background-color: #fff3cd;
-}
-
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.text-uppercase {
-  letter-spacing: 1px;
-}
-
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  z-index: 9999;
 }
 
-.list-group-item {
-  transition: background-color 0.2s;
+.page-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; margin: 0; }
+.page-subtitle { color: #95a5a6; font-size: 0.9rem; margin-top: 5px; }
+
+/* Perfil */
+.user-profile {
+  display: flex; align-items: center; gap: 15px;
+  padding: 8px 15px; background: #f8f9fa; border-radius: 50px;
+}
+.avatar-circle {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+}
+.user-name { font-weight: 600; font-size: 0.9rem; color: #2c3e50; }
+.user-role { font-size: 0.75rem; color: #95a5a6; }
+
+/* Tarjetas Métricas */
+.metric-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  height: 100%;
+  border-left: 5px solid transparent;
 }
 
-.list-group-item:hover {
-  background-color: #f8f9fa;
+.primary-card { border-left-color: #4e73df; }
+.success-card { border-left-color: #1cc88a; }
+
+.metric-value { font-size: 2rem; font-weight: 700; color: #2c3e50; line-height: 1.2; }
+.metric-label { color: #858796; font-size: 0.9rem; margin-top: 5px; font-weight: 500; }
+
+.metric-icon-container {
+  width: 60px; height: 60px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+}
+.bg-primary-soft { background-color: rgba(78, 115, 223, 0.1); }
+.bg-success-soft { background-color: rgba(28, 200, 138, 0.1); }
+.bg-secondary-soft { background-color: rgba(108, 117, 125, 0.1); }
+
+/* Tabla */
+.content-card { border-radius: 16px; overflow: hidden; }
+.custom-table th {
+  font-weight: 600; text-transform: uppercase; font-size: 0.75rem;
+  color: #858796; padding: 1rem; background-color: #f8f9fc; border-bottom: 2px solid #e3e6f0;
+}
+.custom-table td { padding: 1rem; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+.hover-row:hover { background-color: #f8f9fc; }
+
+.client-avatar-small {
+  width: 35px; height: 35px; background-color: #e2e6ea;
+  color: #6c757d; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.9rem;
 }
 
-.badge {
-  font-size: 0.75em;
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; transition: all 0.2s; border: none; background: transparent;
 }
+.btn-icon:hover { transform: scale(1.1); background-color: #f1f3f9; }
 
+/* MODAL PERSONALIZADO (Para mantener el estilo limpio) */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px);
+  z-index: 1050; display: flex; justify-content: center; align-items: center;
+}
+.modal-card {
+  background: white; width: 90%; max-width: 600px;
+  border-radius: 20px; padding: 2rem;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.1);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+
+/* AUTOCOMPLETADO (Suggestions) */
+.suggestions-dropdown {
+  position: absolute; top: 100%; left: 0; width: 100%;
+  background: white; border: 1px solid #e3e6f0;
+  border-radius: 0 0 10px 10px; z-index: 1000;
+  max-height: 200px; overflow-y: auto;
+}
+.suggestion-item {
+  padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f8f9fc;
+}
+.suggestion-item:hover { background-color: #f1f3f9; }
+
+/* Animaciones */
+.animate-fade-in { animation: fadeIn 0.5s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Responsive */
 @media (max-width: 992px) {
-  .main-content {
-    margin-left: 0;
-    padding: 15px;
-    align-items: flex-start;
-  }
-  
-  .btn-group .btn {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-  }
-  
-  .card-text.small {
-    font-size: 0.8rem;
-  }
+  .main-content { margin-left: 0; padding: 1.5rem; }
+  .dashboard-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
 }
 
-.logo-fixed {
-  display: none;
+@media (max-width: 768px) {
+  .custom-table thead { display: none; }
+  .custom-table, .custom-table tbody, .custom-table tr, .custom-table td { display: block; width: 100%; }
+  .custom-table tr {
+    margin-bottom: 1rem; background: white; border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 1rem; border: 1px solid #e3e6f0;
+  }
+  .custom-table td {
+    padding: 0.5rem 0; text-align: right; border: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  .custom-table td::before {
+    content: attr(data-label); font-weight: 600; color: #858796; font-size: 0.85rem;
+  }
 }
 </style>

@@ -3,20 +3,20 @@ import database from '../config/database.js';
 
 const { sequelize } = database;
 
-const Marca = sequelize.define('Marca', {
-  id_marca: {
+const Falla = sequelize.define('Falla', {
+  id_falla: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
   },
-  nombre_marca: {
+  nombre_falla: {
     type: DataTypes.STRING(100),
     allowNull: false,
     unique: true
   }
 }, {
-  tableName: 'marca',
+  tableName: 'fallas',
   timestamps: false
 });
 
-export default Marca;
+export default Falla;
