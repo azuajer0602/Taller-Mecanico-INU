@@ -24,6 +24,7 @@ import database from './config/database.js';
 import setupAssociations from './models/AssociationsTransacciones.js';
 import setupAsso from './models/associations.js';
 import error from '../red/errors.js';
+import servicioRoutes from './routes/servicioRoutes.js';
 // Importar modelos para que Sequelize los registre antes de las asociaciones
 import './models/Cliente.js';
 import './models/Factura.js';
@@ -67,7 +68,7 @@ app.use('/api/atributos', atributosRoutes);
 app.use('/api/diagnosticos', diagnosticoRoutes);
 app.use('/api/transacciones', transaccionRoutes);
 app.use('/api/facturas', facturaRoutes); // ¡NUEVA RUTA PARA FACTURAS!
-
+app.use('/api/servicios', servicioRoutes);
 // ==================== MANEJO DE ERRORES CENTRALIZADO ====================
 app.use(error);
 

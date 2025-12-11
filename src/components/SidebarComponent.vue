@@ -88,10 +88,21 @@ const handleLogout = () => {
         </router-link>
         </li>
 
-        <a href="#servicios" class="nav-link" @click="closeSidebar">
+             
+        <li v-if="!authStore.isMecanico">
+         <router-link to="/serviciosadmin" class="nav-link" :class="{ active: $route.path === '/serviciosadmin' }" @click="closeSidebar">
           <span class="nav-icon">🛠️</span>
           <span class="nav-text">Servicios</span>
-        </a>
+        </router-link>                 
+      </li>
+         
+      <li v-if="!authStore.isAdmin">
+           <router-link to="/serviciosempleado" class="nav-link" :class="{ active: $route.path === '/serviciosempleado' }" @click="closeSidebar">
+          <span class="nav-icon">🛠️</span>
+          <span class="nav-text">Servicios</span>
+        </router-link>
+           
+      </li>
 
         <router-link to="/clientes" class="nav-link" :class="{ active: $route.path === '/clientes' }" @click="closeSidebar">
           <span class="nav-icon">👥</span>
@@ -143,7 +154,7 @@ const handleLogout = () => {
           <span class="nav-text">Registro de Fallas</span>
         </router-link>
 
-         <router-link to="/atributos" class="nav-link" :class="{ active: $route.path === '/fallas' }" @click="closeSidebar">
+         <router-link to="/atributos" class="nav-link" :class="{ active: $route.path === '/atributos' }" @click="closeSidebar">
           <span class="nav-icon">🔧</span>
           <span class="nav-text">Registro de Partes</span>
         </router-link>

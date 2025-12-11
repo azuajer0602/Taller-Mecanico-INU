@@ -4,6 +4,30 @@ import Cliente from '../models/Cliente.js';
 
 export const vehiculoController = {
     
+    // --- ESTA ES LA FUNCIÓN QUE TE FALTA ---
+    // Obtener vehículos disponibles para diagnóstico (Activos y NO diagnosticados)
+    async findForDiagnostico(req, res) {
+        try {
+            const vehiculos = await Vehiculo.findAll({
+                where: {
+                    activo: 1,         // Que esté activo
+                    diagnosticado: 0   // Que NO haya sido diagnosticado aún
+                },
+                include: [
+                    { model: Marca, as: 'marca_detalle', attributes: ['nombre_marca'] },
+                    { model: Cliente, as: 'cliente_detalle', attributes: ['nombre', 'apellido','cedula'] }
+                ],
+                order: [['matricula', 'ASC']]
+            });
+            
+            res.json({ success: true, count: vehiculos.length, data: vehiculos });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+    // ---------------------------------------
+
     // CREATE
     async create(req, res) {
         try {
@@ -18,13 +42,13 @@ export const vehiculoController = {
 
             const nuevoVehiculo = await Vehiculo.create({
                 matricula,
-                id_marca, // Guardamos el ID
+                id_marca,
                 modelo,
                 afio,
                 color,
                 id_cliente,
-                activo: true, // Por defecto true según requerimiento
-                diagnosticado: false // Por defecto false según requerimiento
+                activo: true, 
+                diagnosticado: false 
             });
 
             res.status(201).json({
@@ -41,7 +65,7 @@ export const vehiculoController = {
         }
     },
 
-    // FIND ALL (Con relaciones para mostrar nombres en la tabla)
+    // FIND ALL
     async findAll(req, res) {
         try {
             const vehiculos = await Vehiculo.findAll({
@@ -82,7 +106,6 @@ export const vehiculoController = {
     async update(req, res) {
         try {
             const { matricula } = req.params;
-            // Solo permitimos actualizar datos no clave
             const { id_marca, modelo, afio, color, id_cliente, activo } = req.body;
 
             const vehiculo = await Vehiculo.findByPk(matricula);
@@ -103,7 +126,7 @@ export const vehiculoController = {
         }
     },
 
-    // DELETE (Solo lógico o físico dependiendo de tu regla, aquí dejo el físico que tenías)
+    // DELETE
     async delete(req, res) {
         try {
             const { matricula } = req.params;

@@ -1,32 +1,29 @@
 import { DataTypes } from 'sequelize';
 import database from '../config/database.js';
+
 const { sequelize } = database;
+
 const AtributoVehiculo = sequelize.define('AtributoVehiculo', {
-  id_atributo_vehiculo: { 
+  id_atributo_vehiculo: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
   },
-    matricula: { 
-    type: DataTypes.STRING,
+  matricula: {
+    type: DataTypes.STRING(15),
     allowNull: false,
   },
-
-    id_atributo: { 
+  id_atributo: {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-    id_estado_atributo: { 
-    type: DataTypes.INTEGER,
+  id_estado_atributo: {
+    type: DataTypes.INTEGER, // 1=Bueno, 2=Malo, 3=N/A
     allowNull: false,
-  },
+  }
 }, {
-
-  tableName: 'atributo_vehiculo', 
-  freezeTableName: true, 
-  timestamps: false,
-  
-
+  tableName: 'atributo_vehiculo',
+  timestamps: false
 });
 
 export default AtributoVehiculo;

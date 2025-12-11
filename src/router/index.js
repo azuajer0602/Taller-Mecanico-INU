@@ -19,7 +19,8 @@ import Ajustes from'../views/Ajustes.vue'
 import FallasView from '../views/FallasView.vue'
 import marcas from '../views/MarcasView.vue'
 import atributos from '../views/AtributosView.vue'
-
+import serviciosadmin from '../views/ServicioAdminView.vue'
+import serviciosempleado from '../views/ServicioEmpleadoView.vue'
 const routes = [
   // ... tus rutas (sin cambios) ...
   { path: '/', component: Login },
@@ -38,7 +39,11 @@ const routes = [
   { path: '/proveedores', component: proveedores, meta: { requiresAuth: true, allowedRoles: ['administrador'] }},
    { path: '/marcas', component: marcas, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
      { path: '/fallas', component: FallasView, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
-     { path: '/atributos', component: atributos, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }}
+     { path: '/atributos', component: atributos, meta: { requiresAuth: true, allowedRoles: ['administrador','mecanico'] }},
+     { path: '/serviciosadmin', component: serviciosadmin, meta: { requiresAuth: true, allowedRoles: ['administrador'] }},
+     { path: '/serviciosempleado', component: serviciosempleado, meta: { requiresAuth: true, allowedRoles: ['mecanico'] }}
+
+     
 ]
 
 const router = createRouter({

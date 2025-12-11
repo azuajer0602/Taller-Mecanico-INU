@@ -10,6 +10,9 @@ import CompraRepuesto from './CompraRepuesto.js';
 import Proveedor from './Proveedor.js'; // <--- ¡Asegúrate de importar Proveedor!
 import Falla from './Falla.js';
 import Atributo from './Atributos.js';
+import Servicio from './Servicio.js';
+import AtributoVehiculo from './AtributoVehiculo.js';
+import Empleado from './Empleado.js';
 const setupAsso = () => {
 
   // --- ASOCIACIONES DE FACTURACIÓN ---
@@ -55,5 +58,18 @@ Falla.hasMany(Diagnostico, { foreignKey: 'id_falla' });
 // Diagnostico tiene un Vehiculo (Esto ya deberías tenerlo, pero verifica el alias)
 Diagnostico.belongsTo(Vehiculo, { foreignKey: 'id_vehiculo', as: 'vehiculo_detalle' });
 };
+
+// ASOCIACIONES DE SERVICIO
+Servicio.belongsTo(Vehiculo, { foreignKey: 'matricula_fk', targetKey: 'matricula', as: 'vehiculo' });
+Vehiculo.hasMany(Servicio, { foreignKey: 'matricula_fk' });
+
+Servicio.belongsTo(Falla, { foreignKey: 'id_falla_reportada', as: 'falla' });
+
+// ASOCIACIONES DE ATRIBUTO_VEHICULO (Checklist)
+AtributoVehiculo.belongsTo(Vehiculo, { foreignKey: 'matricula', targetKey: 'matricula' });
+AtributoVehiculo.belongsTo(Atributo, { foreignKey: 'id_atributo' });
+
+Servicio.belongsTo(Empleado, { foreignKey: 'id_empleado_fk', as: 'mecanico' });
+Empleado.hasMany(Servicio, { foreignKey: 'id_empleado_fk' });
 
 export default setupAsso;
